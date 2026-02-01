@@ -7,6 +7,7 @@ import { cssTransition, toast, ToastContainer } from 'react-toastify';
 import { useMessageParser, usePromptEnhancer, useShortcuts, useSnapScroll } from '~/lib/hooks';
 import { useChatHistory } from '~/lib/persistence';
 import { chatStore } from '~/lib/stores/chat';
+import { providerStore } from '~/lib/stores/provider';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { fileModificationsToHTML } from '~/utils/diff';
 import { cubicEasingFn } from '~/utils/easings';
@@ -72,11 +73,16 @@ export const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProp
   const [chatStarted, setChatStarted] = useState(initialMessages.length > 0);
 
   const { showChat } = useStore(chatStore);
+  const providerSettings = useStore(providerStore);
 
   const [animationScope, animate] = useAnimate();
 
   const { messages, isLoading, input, handleInputChange, setInput, stop, append } = useChat({
     api: '/api/chat',
+    body: {
+      apiKey: providerSettings.apiKey || undefined,
+      modelId: providerSettings.selectedModel || undefined,
+    },
     onError: (error) => {
       logger.error('Request failed\n\n', error);
       toast.error('There was an error processing your request');
