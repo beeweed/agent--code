@@ -3,6 +3,28 @@ import type { BoltArtifactData } from '~/types/artifact';
 import { createScopedLogger } from '~/utils/logger';
 import { unreachable } from '~/utils/unreachable';
 
+const HTML_ENTITIES: Record<string, string> = {
+  '&lt;': '<',
+  '&gt;': '>',
+  '&amp;': '&',
+  '&quot;': '"',
+  '&#39;': "'",
+  '&apos;': "'",
+  '&#x27;': "'",
+  '&#x2F;': '/',
+  '&#47;': '/',
+};
+
+function decodeHTMLEntities(text: string): string {
+  let result = text;
+
+  for (const [entity, char] of Object.entries(HTML_ENTITIES)) {
+    result = result.split(entity).join(char);
+  }
+
+  return result;
+}
+
 const ARTIFACT_TAG_OPEN = '<boltArtifact';
 const ARTIFACT_TAG_CLOSE = '</boltArtifact>';
 const ARTIFACT_ACTION_TAG_OPEN = '<boltAction';
@@ -92,6 +114,9 @@ export class StreamingMessageParser {
             currentAction.content += input.slice(i, closeIndex);
 
             let content = currentAction.content.trim();
+
+            // decode HTML entities that may have been introduced during processing
+            content = decodeHTMLEntities(content);
 
             if ('type' in currentAction && currentAction.type === 'file') {
               content += '\n';
