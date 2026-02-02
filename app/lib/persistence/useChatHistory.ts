@@ -32,6 +32,7 @@ export function useChatHistory() {
   useEffect(() => {
     if (!db) {
       setReady(true);
+      workbenchStore.resetForNewChat();
 
       if (persistenceEnabled) {
         toast.error(`Chat persistence is unavailable`);
@@ -48,6 +49,7 @@ export function useChatHistory() {
             setUrlId(storedMessages.urlId);
             description.set(storedMessages.description);
             chatId.set(storedMessages.id);
+            workbenchStore.setChatId(storedMessages.id);
           } else {
             navigate(`/`, { replace: true });
           }
@@ -57,6 +59,8 @@ export function useChatHistory() {
         .catch((error) => {
           toast.error(error.message);
         });
+    } else {
+      workbenchStore.resetForNewChat();
     }
   }, []);
 
@@ -85,6 +89,7 @@ export function useChatHistory() {
         const nextId = await getNextId(db);
 
         chatId.set(nextId);
+        workbenchStore.setChatId(nextId);
 
         if (!urlId) {
           navigateChat(nextId);

@@ -6,7 +6,7 @@ import { createScopedLogger } from '~/utils/logger';
 
 const logger = createScopedLogger('FilesStore');
 
-const STORAGE_KEY = 'bolt_files';
+const STORAGE_KEY_PREFIX = 'bolt_files_';
 
 export interface File {
   type: 'file';
@@ -23,21 +23,9 @@ type Dirent = File | Folder;
 export type FileMap = Record<string, Dirent | undefined>;
 
 export class FilesStore {
-  /**
-   * Tracks the number of files without folders.
-   */
   #size = 0;
-
-  /**
-   * @note Keeps track all modified files with their original content since the last user message.
-   * Needs to be reset when the user sends another message and all changes have to be submitted
-   * for the model to be aware of the changes.
-   */
+  #chatId: string | undefined;
   #modifiedFiles: Map<string, string> = import.meta.hot?.data.modifiedFiles ?? new Map();
-
-  /**
-   * Map of files stored in the browser.
-   */
   files: MapStore<FileMap> = import.meta.hot?.data.files ?? map({});
 
   get filesCount() {
@@ -49,8 +37,35 @@ export class FilesStore {
       import.meta.hot.data.files = this.files;
       import.meta.hot.data.modifiedFiles = this.#modifiedFiles;
     }
+  }
 
-    this.#init();
+  setChatId(chatId: string | undefined) {
+    if (this.#chatId === chatId) {
+      return;
+    }
+
+    this.#chatId = chatId;
+    this.#clearFiles();
+
+    if (chatId) {
+      this.#loadFromStorage(chatId);
+    }
+  }
+
+  resetFiles() {
+    this.#clearFiles();
+    this.#chatId = undefined;
+  }
+
+  #clearFiles() {
+    const currentFiles = this.files.get();
+
+    for (const path of Object.keys(currentFiles)) {
+      this.files.setKey(path, undefined);
+    }
+
+    this.#size = 0;
+    this.#modifiedFiles.clear();
   }
 
   getFile(filePath: string) {
@@ -92,15 +107,19 @@ export class FilesStore {
   addFile(filePath: string, content: string) {
     const normalizedPath = filePath.startsWith(WORK_DIR) ? filePath : `${WORK_DIR}/${filePath}`;
 
-    // Ensure parent folders exist
     const folder = nodePath.dirname(normalizedPath);
 
     if (folder !== '.' && folder !== WORK_DIR) {
       this.#ensureFolderExists(folder);
     }
 
+    const existingFile = this.files.get()[normalizedPath];
+
+    if (!existingFile || existingFile.type !== 'file') {
+      this.#size++;
+    }
+
     this.files.setKey(normalizedPath, { type: 'file', content, isBinary: false });
-    this.#size++;
     this.#persistToStorage();
 
     logger.info(`File added: ${normalizedPath}`);
@@ -121,11 +140,11 @@ export class FilesStore {
     }
   }
 
-  #init() {
-    // Load files from browser storage on initialization
+  #loadFromStorage(chatId: string) {
     if (typeof window !== 'undefined') {
       try {
-        const stored = localStorage.getItem(STORAGE_KEY);
+        const storageKey = `${STORAGE_KEY_PREFIX}${chatId}`;
+        const stored = localStorage.getItem(storageKey);
 
         if (stored) {
           const parsed = JSON.parse(stored) as FileMap;
@@ -139,7 +158,8 @@ export class FilesStore {
               }
             }
           }
-          logger.info('Loaded files from browser storage');
+
+          logger.info(`Loaded files from storage for chat: ${chatId}`);
         }
       } catch (error) {
         logger.error('Failed to load files from storage', error);
@@ -148,10 +168,11 @@ export class FilesStore {
   }
 
   #persistToStorage() {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && this.#chatId) {
       try {
         const files = this.files.get();
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(files));
+        const storageKey = `${STORAGE_KEY_PREFIX}${this.#chatId}`;
+        localStorage.setItem(storageKey, JSON.stringify(files));
       } catch (error) {
         logger.error('Failed to persist files to storage', error);
       }

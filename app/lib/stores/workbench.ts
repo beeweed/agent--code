@@ -56,6 +56,36 @@ export class WorkbenchStore {
     return this.#filesStore.filesCount;
   }
 
+  setChatId(chatId: string | undefined) {
+    this.#filesStore.setChatId(chatId);
+
+    if (!chatId) {
+      this.#editorStore.setSelectedFile(undefined);
+      this.unsavedFiles.set(new Set());
+      this.artifactIdList = [];
+
+      const currentArtifacts = this.artifacts.get();
+
+      for (const key of Object.keys(currentArtifacts)) {
+        this.artifacts.setKey(key, undefined as never);
+      }
+    }
+  }
+
+  resetForNewChat() {
+    this.#filesStore.resetFiles();
+    this.#editorStore.setSelectedFile(undefined);
+    this.unsavedFiles.set(new Set());
+    this.artifactIdList = [];
+    this.showWorkbench.set(false);
+
+    const currentArtifacts = this.artifacts.get();
+
+    for (const key of Object.keys(currentArtifacts)) {
+      this.artifacts.setKey(key, undefined as never);
+    }
+  }
+
   setDocuments(files: FileMap) {
     this.#editorStore.setDocuments(files);
 
