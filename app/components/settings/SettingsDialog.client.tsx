@@ -1,13 +1,7 @@
 import { useStore } from '@nanostores/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { memo, useCallback, useEffect, useState } from 'react';
-import {
-  Dialog,
-  DialogButton,
-  DialogDescription,
-  DialogRoot,
-  DialogTitle,
-} from '~/components/ui/Dialog';
+import { Dialog, DialogButton, DialogDescription, DialogRoot, DialogTitle } from '~/components/ui/Dialog';
 import {
   providerStore,
   isSettingsDialogOpen,
@@ -22,7 +16,7 @@ import { classNames } from '~/utils/classNames';
 export const SettingsDialog = memo(() => {
   const isOpen = useStore(isSettingsDialogOpen);
   const settings = useStore(providerStore);
-  
+
   const [localApiKey, setLocalApiKey] = useState(settings.apiKey);
   const [showApiKey, setShowApiKey] = useState(false);
   const [hasFetched, setHasFetched] = useState(false);
@@ -42,6 +36,7 @@ export const SettingsDialog = memo(() => {
   const handleSaveApiKey = useCallback(async () => {
     if (localApiKey.trim()) {
       setApiKey(localApiKey.trim());
+
       try {
         await fetchModels(localApiKey.trim());
       } catch (error) {
@@ -50,15 +45,22 @@ export const SettingsDialog = memo(() => {
     }
   }, [localApiKey]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSaveApiKey();
-    }
-  }, [handleSaveApiKey]);
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        handleSaveApiKey();
+      }
+    },
+    [handleSaveApiKey],
+  );
 
   const formatPrice = (price: string) => {
     const num = parseFloat(price);
-    if (num === 0) return 'Free';
+
+    if (num === 0) {
+      return 'Free';
+    }
+
     return `$${(num * 1000000).toFixed(2)}/M`;
   };
 
@@ -82,9 +84,7 @@ export const SettingsDialog = memo(() => {
             <DialogDescription className="space-y-6">
               {/* API Key Section */}
               <div className="space-y-3">
-                <label className="block text-sm font-medium text-bolt-elements-textSecondary">
-                  OpenRouter API Key
-                </label>
+                <label className="block text-sm font-medium text-bolt-elements-textSecondary">OpenRouter API Key</label>
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <input
@@ -99,7 +99,7 @@ export const SettingsDialog = memo(() => {
                         'border border-bolt-elements-borderColor',
                         'text-bolt-elements-textPrimary placeholder:text-bolt-elements-textTertiary',
                         'focus:outline-none focus:ring-2 focus:ring-bolt-elements-focus',
-                        'transition-all duration-150'
+                        'transition-all duration-150',
                       )}
                     />
                     <button
@@ -110,15 +110,8 @@ export const SettingsDialog = memo(() => {
                       <div className={showApiKey ? 'i-ph:eye-slash' : 'i-ph:eye'} />
                     </button>
                   </div>
-                  <DialogButton
-                    type="primary"
-                    onClick={handleSaveApiKey}
-                  >
-                    {settings.isLoadingModels ? (
-                      <div className="i-svg-spinners:90-ring-with-bg" />
-                    ) : (
-                      'Save & Fetch'
-                    )}
+                  <DialogButton type="primary" onClick={handleSaveApiKey}>
+                    {settings.isLoadingModels ? <div className="i-svg-spinners:90-ring-with-bg" /> : 'Save & Fetch'}
                   </DialogButton>
                 </div>
                 <p className="text-xs text-bolt-elements-textTertiary">
@@ -148,11 +141,7 @@ export const SettingsDialog = memo(() => {
 
               {/* Model Selection Section */}
               {settings.models.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="space-y-3"
-                >
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
                   <label className="block text-sm font-medium text-bolt-elements-textSecondary">
                     Select Model ({settings.models.length} available)
                   </label>
@@ -166,7 +155,7 @@ export const SettingsDialog = memo(() => {
                       'text-bolt-elements-textPrimary',
                       'focus:outline-none focus:ring-2 focus:ring-bolt-elements-focus',
                       'transition-all duration-150',
-                      'cursor-pointer'
+                      'cursor-pointer',
                     )}
                   >
                     {settings.models.map((model) => (
@@ -185,12 +174,8 @@ export const SettingsDialog = memo(() => {
                     >
                       <div className="flex items-start justify-between">
                         <div>
-                          <h4 className="font-medium text-bolt-elements-textPrimary">
-                            {selectedModelInfo.name}
-                          </h4>
-                          <p className="text-xs text-bolt-elements-textTertiary mt-1">
-                            {selectedModelInfo.id}
-                          </p>
+                          <h4 className="font-medium text-bolt-elements-textPrimary">{selectedModelInfo.name}</h4>
+                          <p className="text-xs text-bolt-elements-textTertiary mt-1">{selectedModelInfo.id}</p>
                         </div>
                         <div className="flex gap-2">
                           <span className="px-2 py-1 text-xs rounded-full bg-bolt-elements-background-depth-4 text-bolt-elements-textSecondary">
@@ -198,13 +183,13 @@ export const SettingsDialog = memo(() => {
                           </span>
                         </div>
                       </div>
-                      
+
                       {selectedModelInfo.description && (
                         <p className="text-sm text-bolt-elements-textSecondary line-clamp-2">
                           {selectedModelInfo.description}
                         </p>
                       )}
-                      
+
                       <div className="flex gap-4 text-xs">
                         <div>
                           <span className="text-bolt-elements-textTertiary">Input: </span>

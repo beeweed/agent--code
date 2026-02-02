@@ -20,21 +20,15 @@ export interface ProviderConfig {
   modelId?: string;
 }
 
-export function streamText(
-  messages: Messages, 
-  env: Env, 
-  options?: StreamingOptions,
-  providerConfig?: ProviderConfig
-) {
+export function streamText(messages: Messages, env: Env, options?: StreamingOptions, providerConfig?: ProviderConfig) {
   // Use OpenRouter if API key is provided from client, otherwise fall back to Anthropic
-  const model = providerConfig?.apiKey && providerConfig?.modelId
-    ? getOpenRouterModel(providerConfig.apiKey, providerConfig.modelId)
-    : getAnthropicModel(getAPIKey(env));
+  const model =
+    providerConfig?.apiKey && providerConfig?.modelId
+      ? getOpenRouterModel(providerConfig.apiKey, providerConfig.modelId)
+      : getAnthropicModel(getAPIKey(env));
 
   // Only add Anthropic-specific headers when using Anthropic
-  const headers = providerConfig?.apiKey 
-    ? {} 
-    : { 'anthropic-beta': 'max-tokens-3-5-sonnet-2024-07-15' };
+  const headers = providerConfig?.apiKey ? {} : { 'anthropic-beta': 'max-tokens-3-5-sonnet-2024-07-15' };
 
   return _streamText({
     model,

@@ -30,7 +30,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
     const response = await fetch('https://openrouter.ai/api/v1/models', {
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
     });
@@ -38,21 +38,22 @@ export async function action({ request }: ActionFunctionArgs) {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('OpenRouter API error:', errorText);
-      
+
       if (response.status === 401) {
         return json({ error: 'Invalid API key' }, { status: 401 });
       }
-      
+
       return json({ error: 'Failed to fetch models from OpenRouter' }, { status: response.status });
     }
 
     const data: ModelsResponse = await response.json();
-    
+
     // Sort models by name and filter to only include text generation models
     const models = data.data
-      .filter((model) => 
-        model.architecture?.output_modalities?.includes('text') &&
-        model.architecture?.input_modalities?.includes('text')
+      .filter(
+        (model) =>
+          model.architecture?.output_modalities?.includes('text') &&
+          model.architecture?.input_modalities?.includes('text'),
       )
       .sort((a, b) => a.name.localeCompare(b.name));
 

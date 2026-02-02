@@ -1,17 +1,12 @@
-import type { PathWatcherEvent, WebContainer } from '@webcontainer/api';
-import { getEncoding } from 'istextorbinary';
 import { map, type MapStore } from 'nanostores';
-import { Buffer } from 'node:buffer';
 import * as nodePath from 'node:path';
-import { bufferWatchEvents } from '~/utils/buffer';
 import { WORK_DIR } from '~/utils/constants';
 import { computeFileModifications } from '~/utils/diff';
 import { createScopedLogger } from '~/utils/logger';
-import { unreachable } from '~/utils/unreachable';
 
 const logger = createScopedLogger('FilesStore');
 
-const utf8TextDecoder = new TextDecoder('utf8', { fatal: true });
+const STORAGE_KEY = 'bolt_files';
 
 export interface File {
   type: 'file';
@@ -28,8 +23,6 @@ type Dirent = File | Folder;
 export type FileMap = Record<string, Dirent | undefined>;
 
 export class FilesStore {
-  #webcontainer: Promise<WebContainer>;
-
   /**
    * Tracks the number of files without folders.
    */
@@ -43,7 +36,7 @@ export class FilesStore {
   #modifiedFiles: Map<string, string> = import.meta.hot?.data.modifiedFiles ?? new Map();
 
   /**
-   * Map of files that matches the state of WebContainer.
+   * Map of files stored in the browser.
    */
   files: MapStore<FileMap> = import.meta.hot?.data.files ?? map({});
 
@@ -51,9 +44,7 @@ export class FilesStore {
     return this.#size;
   }
 
-  constructor(webcontainerPromise: Promise<WebContainer>) {
-    this.#webcontainer = webcontainerPromise;
-
+  constructor() {
     if (import.meta.hot) {
       import.meta.hot.data.files = this.files;
       import.meta.hot.data.modifiedFiles = this.#modifiedFiles;
@@ -81,140 +72,89 @@ export class FilesStore {
   }
 
   async saveFile(filePath: string, content: string) {
-    const webcontainer = await this.#webcontainer;
-
     try {
-      const relativePath = nodePath.relative(webcontainer.workdir, filePath);
-
-      if (!relativePath) {
-        throw new Error(`EINVAL: invalid file path, write '${relativePath}'`);
-      }
-
       const oldContent = this.getFile(filePath)?.content;
 
-      if (!oldContent) {
-        unreachable('Expected content to be defined');
-      }
-
-      await webcontainer.fs.writeFile(relativePath, content);
-
-      if (!this.#modifiedFiles.has(filePath)) {
+      if (!this.#modifiedFiles.has(filePath) && oldContent !== undefined) {
         this.#modifiedFiles.set(filePath, oldContent);
       }
 
-      // we immediately update the file and don't rely on the `change` event coming from the watcher
       this.files.setKey(filePath, { type: 'file', content, isBinary: false });
+      this.#persistToStorage();
 
       logger.info('File updated');
     } catch (error) {
       logger.error('Failed to update file content\n\n', error);
-
       throw error;
     }
   }
 
-  async #init() {
-    const webcontainer = await this.#webcontainer;
+  addFile(filePath: string, content: string) {
+    const normalizedPath = filePath.startsWith(WORK_DIR) ? filePath : `${WORK_DIR}/${filePath}`;
 
-    webcontainer.internal.watchPaths(
-      { include: [`${WORK_DIR}/**`], exclude: ['**/node_modules', '.git'], includeContent: true },
-      bufferWatchEvents(100, this.#processEventBuffer.bind(this)),
-    );
+    // Ensure parent folders exist
+    const folder = nodePath.dirname(normalizedPath);
+
+    if (folder !== '.' && folder !== WORK_DIR) {
+      this.#ensureFolderExists(folder);
+    }
+
+    this.files.setKey(normalizedPath, { type: 'file', content, isBinary: false });
+    this.#size++;
+    this.#persistToStorage();
+
+    logger.info(`File added: ${normalizedPath}`);
   }
 
-  #processEventBuffer(events: Array<[events: PathWatcherEvent[]]>) {
-    const watchEvents = events.flat(2);
+  #ensureFolderExists(folderPath: string) {
+    const parts = folderPath.split('/').filter(Boolean);
+    let currentPath = '';
 
-    for (const { type, path, buffer } of watchEvents) {
-      // remove any trailing slashes
-      const sanitizedPath = path.replace(/\/+$/g, '');
+    for (const part of parts) {
+      currentPath = currentPath ? `${currentPath}/${part}` : `/${part}`;
 
-      switch (type) {
-        case 'add_dir': {
-          // we intentionally add a trailing slash so we can distinguish files from folders in the file tree
-          this.files.setKey(sanitizedPath, { type: 'folder' });
-          break;
-        }
-        case 'remove_dir': {
-          this.files.setKey(sanitizedPath, undefined);
+      const existing = this.files.get()[currentPath];
 
-          for (const [direntPath] of Object.entries(this.files)) {
-            if (direntPath.startsWith(sanitizedPath)) {
-              this.files.setKey(direntPath, undefined);
-            }
-          }
-
-          break;
-        }
-        case 'add_file':
-        case 'change': {
-          if (type === 'add_file') {
-            this.#size++;
-          }
-
-          let content = '';
-
-          /**
-           * @note This check is purely for the editor. The way we detect this is not
-           * bullet-proof and it's a best guess so there might be false-positives.
-           * The reason we do this is because we don't want to display binary files
-           * in the editor nor allow to edit them.
-           */
-          const isBinary = isBinaryFile(buffer);
-
-          if (!isBinary) {
-            content = this.#decodeFileContent(buffer);
-          }
-
-          this.files.setKey(sanitizedPath, { type: 'file', content, isBinary });
-
-          break;
-        }
-        case 'remove_file': {
-          this.#size--;
-          this.files.setKey(sanitizedPath, undefined);
-          break;
-        }
-        case 'update_directory': {
-          // we don't care about these events
-          break;
-        }
+      if (!existing) {
+        this.files.setKey(currentPath, { type: 'folder' });
       }
     }
   }
 
-  #decodeFileContent(buffer?: Uint8Array) {
-    if (!buffer || buffer.byteLength === 0) {
-      return '';
-    }
+  #init() {
+    // Load files from browser storage on initialization
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
 
-    try {
-      return utf8TextDecoder.decode(buffer);
-    } catch (error) {
-      console.log(error);
-      return '';
+        if (stored) {
+          const parsed = JSON.parse(stored) as FileMap;
+
+          for (const [path, dirent] of Object.entries(parsed)) {
+            if (dirent) {
+              this.files.setKey(path, dirent);
+
+              if (dirent.type === 'file') {
+                this.#size++;
+              }
+            }
+          }
+          logger.info('Loaded files from browser storage');
+        }
+      } catch (error) {
+        logger.error('Failed to load files from storage', error);
+      }
     }
   }
-}
 
-function isBinaryFile(buffer: Uint8Array | undefined) {
-  if (buffer === undefined) {
-    return false;
+  #persistToStorage() {
+    if (typeof window !== 'undefined') {
+      try {
+        const files = this.files.get();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(files));
+      } catch (error) {
+        logger.error('Failed to persist files to storage', error);
+      }
+    }
   }
-
-  return getEncoding(convertToBuffer(buffer), { chunkLength: 100 }) === 'binary';
-}
-
-/**
- * Converts a `Uint8Array` into a Node.js `Buffer` by copying the prototype.
- * The goal is to  avoid expensive copies. It does create a new typed array
- * but that's generally cheap as long as it uses the same underlying
- * array buffer.
- */
-function convertToBuffer(view: Uint8Array): Buffer {
-  const buffer = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
-
-  Object.setPrototypeOf(buffer, Buffer.prototype);
-
-  return buffer as Buffer;
 }

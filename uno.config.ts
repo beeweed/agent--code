@@ -193,19 +193,6 @@ export default defineConfig({
             secondary: 'var(--bolt-elements-icon-secondary)',
             tertiary: 'var(--bolt-elements-icon-tertiary)',
           },
-          preview: {
-            addressBar: {
-              background: 'var(--bolt-elements-preview-addressBar-background)',
-              backgroundHover: 'var(--bolt-elements-preview-addressBar-backgroundHover)',
-              backgroundActive: 'var(--bolt-elements-preview-addressBar-backgroundActive)',
-              text: 'var(--bolt-elements-preview-addressBar-text)',
-              textActive: 'var(--bolt-elements-preview-addressBar-textActive)',
-            },
-          },
-          terminals: {
-            background: 'var(--bolt-elements-terminals-background)',
-            buttonBackground: 'var(--bolt-elements-terminals-buttonBackground)',
-          },
           dividerColor: 'var(--bolt-elements-dividerColor)',
           loader: {
             background: 'var(--bolt-elements-loader-background)',

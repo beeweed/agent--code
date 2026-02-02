@@ -20,9 +20,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
   const stream = new SwitchableStream();
 
   // Provider configuration from client
-  const providerConfig: ProviderConfig | undefined = apiKey && modelId 
-    ? { apiKey, modelId } 
-    : undefined;
+  const providerConfig: ProviderConfig | undefined = apiKey && modelId ? { apiKey, modelId } : undefined;
 
   try {
     const options: StreamingOptions = {

@@ -27,10 +27,13 @@ export interface ProviderSettings {
 const STORAGE_KEY = 'bolt_provider_settings';
 
 function loadFromStorage(): Partial<ProviderSettings> {
-  if (typeof window === 'undefined') return {};
-  
+  if (typeof window === 'undefined') {
+    return {};
+  }
+
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
+
     if (stored) {
       const parsed = JSON.parse(stored);
       return {
@@ -41,19 +44,25 @@ function loadFromStorage(): Partial<ProviderSettings> {
   } catch (e) {
     console.error('Failed to load provider settings from storage:', e);
   }
+
   return {};
 }
 
 function saveToStorage(settings: Partial<ProviderSettings>) {
-  if (typeof window === 'undefined') return;
-  
+  if (typeof window === 'undefined') {
+    return;
+  }
+
   try {
     const existing = loadFromStorage();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      ...existing,
-      apiKey: settings.apiKey,
-      selectedModel: settings.selectedModel,
-    }));
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        ...existing,
+        apiKey: settings.apiKey,
+        selectedModel: settings.selectedModel,
+      }),
+    );
   } catch (e) {
     console.error('Failed to save provider settings to storage:', e);
   }
@@ -105,7 +114,7 @@ export function closeSettingsDialog() {
 export async function fetchModels(apiKey: string): Promise<OpenRouterModel[]> {
   setLoadingModels(true);
   setError(null);
-  
+
   try {
     const response = await fetch('/api/models', {
       method: 'POST',
@@ -114,22 +123,23 @@ export async function fetchModels(apiKey: string): Promise<OpenRouterModel[]> {
       },
       body: JSON.stringify({ apiKey }),
     });
-    
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({})) as { error?: string };
+      const errorData = (await response.json().catch(() => ({}))) as { error?: string };
       throw new Error(errorData.error || 'Failed to fetch models');
     }
-    
-    const data = await response.json() as { models: OpenRouterModel[] };
+
+    const data = (await response.json()) as { models: OpenRouterModel[] };
     const models = data.models;
     setModels(models);
-    
+
     // Auto-select first model if none selected
     const currentSettings = providerStore.get();
+
     if (!currentSettings.selectedModel && models.length > 0) {
       setSelectedModel(models[0].id);
     }
-    
+
     return models;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to fetch models';

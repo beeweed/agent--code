@@ -1,10 +1,9 @@
-import { WebContainer } from '@webcontainer/api';
 import { map, type MapStore } from 'nanostores';
-import * as nodePath from 'node:path';
 import type { BoltAction } from '~/types/actions';
 import { createScopedLogger } from '~/utils/logger';
 import { unreachable } from '~/utils/unreachable';
 import type { ActionCallbackData } from './message-parser';
+import type { FilesStore } from '~/lib/stores/files';
 
 const logger = createScopedLogger('ActionRunner');
 
@@ -34,13 +33,13 @@ export type ActionStateUpdate =
 type ActionsMap = MapStore<Record<string, ActionState>>;
 
 export class ActionRunner {
-  #webcontainer: Promise<WebContainer>;
+  #filesStore: FilesStore;
   #currentExecutionPromise: Promise<void> = Promise.resolve();
 
   actions: ActionsMap = map({});
 
-  constructor(webcontainerPromise: Promise<WebContainer>) {
-    this.#webcontainer = webcontainerPromise;
+  constructor(filesStore: FilesStore) {
+    this.#filesStore = filesStore;
   }
 
   addAction(data: ActionCallbackData) {
@@ -103,7 +102,8 @@ export class ActionRunner {
     try {
       switch (action.type) {
         case 'shell': {
-          await this.#runShellAction(action);
+          // Shell commands are logged as guidance for the user (not executed)
+          logger.info(`Shell command (for reference): ${action.content}`);
           break;
         }
         case 'file': {
@@ -121,60 +121,18 @@ export class ActionRunner {
     }
   }
 
-  async #runShellAction(action: ActionState) {
-    if (action.type !== 'shell') {
-      unreachable('Expected shell action');
-    }
-
-    const webcontainer = await this.#webcontainer;
-
-    const process = await webcontainer.spawn('jsh', ['-c', action.content], {
-      env: { npm_config_yes: true },
-    });
-
-    action.abortSignal.addEventListener('abort', () => {
-      process.kill();
-    });
-
-    process.output.pipeTo(
-      new WritableStream({
-        write(data) {
-          console.log(data);
-        },
-      }),
-    );
-
-    const exitCode = await process.exit;
-
-    logger.debug(`Process terminated with code ${exitCode}`);
-  }
-
   async #runFileAction(action: ActionState) {
     if (action.type !== 'file') {
       unreachable('Expected file action');
     }
 
-    const webcontainer = await this.#webcontainer;
-
-    let folder = nodePath.dirname(action.filePath);
-
-    // remove trailing slashes
-    folder = folder.replace(/\/+$/g, '');
-
-    if (folder !== '.') {
-      try {
-        await webcontainer.fs.mkdir(folder, { recursive: true });
-        logger.debug('Created folder', folder);
-      } catch (error) {
-        logger.error('Failed to create folder\n\n', error);
-      }
-    }
-
     try {
-      await webcontainer.fs.writeFile(action.filePath, action.content);
+      // Add or update file in browser storage
+      this.#filesStore.addFile(action.filePath, action.content);
       logger.debug(`File written ${action.filePath}`);
     } catch (error) {
       logger.error('Failed to write file\n\n', error);
+      throw error;
     }
   }
 

@@ -1,15 +1,17 @@
 import { useStore } from '@nanostores/react';
 import { useEffect } from 'react';
-import { shortcutsStore, type Shortcuts } from '~/lib/stores/settings';
+import { shortcutsStore, type Shortcut } from '~/lib/stores/settings';
+
+type ShortcutName = string;
 
 class ShortcutEventEmitter {
   #emitter = new EventTarget();
 
-  dispatch(type: keyof Shortcuts) {
+  dispatch(type: ShortcutName) {
     this.#emitter.dispatchEvent(new Event(type));
   }
 
-  on(type: keyof Shortcuts, cb: VoidFunction) {
+  on(type: ShortcutName, cb: VoidFunction) {
     this.#emitter.addEventListener(type, cb);
 
     return () => {
@@ -28,7 +30,11 @@ export function useShortcuts(): void {
       const { key, ctrlKey, shiftKey, altKey, metaKey } = event;
 
       for (const name in shortcuts) {
-        const shortcut = shortcuts[name as keyof Shortcuts];
+        const shortcut = shortcuts[name as keyof typeof shortcuts] as Shortcut | undefined;
+
+        if (!shortcut) {
+          continue;
+        }
 
         if (
           shortcut.key.toLowerCase() === key.toLowerCase() &&
@@ -39,7 +45,7 @@ export function useShortcuts(): void {
           (shortcut.shiftKey === undefined || shortcut.shiftKey === shiftKey) &&
           (shortcut.altKey === undefined || shortcut.altKey === altKey)
         ) {
-          shortcutEventEmitter.dispatch(name as keyof Shortcuts);
+          shortcutEventEmitter.dispatch(name);
           event.preventDefault();
           event.stopPropagation();
 
