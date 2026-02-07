@@ -4,6 +4,7 @@ import { createScopedLogger } from '~/utils/logger';
 import { unreachable } from '~/utils/unreachable';
 import type { ActionCallbackData } from './message-parser';
 import type { FilesStore } from '~/lib/stores/files';
+import { e2bStore } from '~/lib/stores/e2b';
 
 const logger = createScopedLogger('ActionRunner');
 
@@ -102,8 +103,8 @@ export class ActionRunner {
     try {
       switch (action.type) {
         case 'shell': {
-          // Shell commands are logged as guidance for the user (not executed)
-          logger.info(`Shell command (for reference): ${action.content}`);
+          // Execute shell command in E2B sandbox terminal
+          await this.#runShellAction(action);
           break;
         }
         case 'file': {
@@ -127,11 +128,58 @@ export class ActionRunner {
     }
 
     try {
-      // Add or update file in browser storage
+      // Write file to E2B sandbox if connected
+      if (e2bStore.isReady()) {
+        const normalizedPath = action.filePath.startsWith('/home/user/') 
+          ? action.filePath 
+          : `/home/user/${action.filePath.replace(/^\//, '')}`;
+        
+        // Create parent directories
+        const pathParts = normalizedPath.split('/').filter(Boolean);
+        let currentPath = '';
+        for (let i = 0; i < pathParts.length - 1; i++) {
+          currentPath += '/' + pathParts[i];
+          if (currentPath.startsWith('/home/user')) {
+            await e2bStore.makeDirectory(currentPath);
+          }
+        }
+        
+        const success = await e2bStore.writeFile(normalizedPath, action.content);
+        if (success) {
+          logger.debug(`File written to E2B sandbox: ${normalizedPath}`);
+        } else {
+          logger.warn(`Failed to write file to E2B sandbox: ${normalizedPath}`);
+        }
+      } else {
+        logger.warn('E2B sandbox not connected - file will only be stored locally');
+      }
+
+      // Also add to local browser storage as backup
       this.#filesStore.addFile(action.filePath, action.content);
-      logger.debug(`File written ${action.filePath}`);
+      logger.debug(`File written to local storage: ${action.filePath}`);
     } catch (error) {
       logger.error('Failed to write file\n\n', error);
+      throw error;
+    }
+  }
+
+  async #runShellAction(action: ActionState) {
+    if (action.type !== 'shell') {
+      unreachable('Expected shell action');
+    }
+
+    try {
+      if (e2bStore.isReady()) {
+        // Execute command in E2B sandbox terminal
+        logger.info(`Executing shell command in E2B sandbox: ${action.content}`);
+        await e2bStore.runCommand(action.content);
+        logger.debug(`Shell command executed: ${action.content}`);
+      } else {
+        // If E2B is not connected, just log the command
+        logger.info(`Shell command (E2B not connected - for reference): ${action.content}`);
+      }
+    } catch (error) {
+      logger.error('Failed to execute shell command\n\n', error);
       throw error;
     }
   }
