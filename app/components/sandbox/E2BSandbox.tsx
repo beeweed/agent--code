@@ -2538,6 +2538,8 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
       console.log('[E2B] Auto-creating sandbox - chatStarted:', chatStarted, 'hasApiKey:', hasApiKey);
       setAutoSandboxCreated(true);
       e2bStore.setAutoCreateTriggered(true);
+      // Set connecting state in store IMMEDIATELY so file operations get queued
+      e2bStore.setConnecting(true);
       createSandbox();
     }
   }, [chatStarted, internalApiKey, isConnected, isConnecting, autoSandboxCreated, createSandbox]);
@@ -2575,6 +2577,8 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
   }, [setInternalApiKey]);
 
   const handleCreateSandbox = useCallback(async () => {
+    // Set connecting state in store IMMEDIATELY so file operations get queued
+    e2bStore.setConnecting(true);
     const sandbox = await createSandbox();
     if (sandbox) {
       setAutoSandboxCreated(true);

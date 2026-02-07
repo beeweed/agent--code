@@ -33,6 +33,65 @@ let runCommandCallback: ((command: string) => Promise<void>) | null = null;
 let createSandboxCallback: (() => Promise<any>) | null = null;
 let activeTerminalId: string | null = null;
 
+// Queue for pending operations when sandbox is not ready yet
+interface PendingOperation {
+  type: 'writeFile' | 'makeDirectory' | 'runCommand';
+  path?: string;
+  content?: string;
+  command?: string;
+  resolve: (value: any) => void;
+  reject: (error: any) => void;
+}
+
+const pendingOperations: PendingOperation[] = [];
+let isProcessingQueue = false;
+
+// Process queued operations
+const processQueue = async () => {
+  if (isProcessingQueue || pendingOperations.length === 0) return;
+  if (!fileWriteCallback || !makeDirectoryCallback) return;
+  
+  isProcessingQueue = true;
+  console.log(`[E2B Store] Processing ${pendingOperations.length} queued operations`);
+  
+  while (pendingOperations.length > 0) {
+    const op = pendingOperations.shift()!;
+    try {
+      let result: any;
+      switch (op.type) {
+        case 'writeFile':
+          if (fileWriteCallback && op.path && op.content !== undefined) {
+            result = await fileWriteCallback(op.path, op.content);
+          } else {
+            result = false;
+          }
+          break;
+        case 'makeDirectory':
+          if (makeDirectoryCallback && op.path) {
+            result = await makeDirectoryCallback(op.path);
+          } else {
+            result = false;
+          }
+          break;
+        case 'runCommand':
+          if (runCommandCallback && op.command) {
+            await runCommandCallback(op.command);
+            result = true;
+          } else {
+            result = false;
+          }
+          break;
+      }
+      op.resolve(result);
+    } catch (error) {
+      console.error(`[E2B Store] Failed to process queued ${op.type}:`, error);
+      op.reject(error);
+    }
+  }
+  
+  isProcessingQueue = false;
+};
+
 export const e2bStore = {
   setApiKey(key: string) {
     e2bApiKey.set(key);
@@ -94,6 +153,10 @@ export const e2bStore = {
     terminalSendInput = callbacks.sendTerminalInput;
     createSandboxCallback = callbacks.createSandbox;
     activeTerminalId = callbacks.getActiveTerminalId();
+    
+    // Process any queued operations now that callbacks are available
+    console.log('[E2B Store] Callbacks registered, processing queue...');
+    processQueue();
   },
 
   setActiveTerminalId(id: string) {
@@ -106,29 +169,78 @@ export const e2bStore = {
 
   // Write file to E2B sandbox
   async writeFile(path: string, content: string): Promise<boolean> {
-    if (!fileWriteCallback) {
-      console.error('E2B sandbox not connected - cannot write file');
-      return false;
+    // If callbacks are ready, write directly
+    if (fileWriteCallback) {
+      return await fileWriteCallback(path, content);
     }
-    return await fileWriteCallback(path, content);
+    
+    // If sandbox is connecting, queue the operation
+    const state = e2bState.get();
+    if (state.isConnecting || state.isConnected) {
+      console.log(`[E2B Store] Queueing writeFile: ${path} (waiting for callbacks)`);
+      return new Promise((resolve, reject) => {
+        pendingOperations.push({
+          type: 'writeFile',
+          path,
+          content,
+          resolve,
+          reject,
+        });
+      });
+    }
+    
+    console.error('E2B sandbox not connected - cannot write file');
+    return false;
   },
 
   // Make directory in E2B sandbox
   async makeDirectory(path: string): Promise<boolean> {
-    if (!makeDirectoryCallback) {
-      console.error('E2B sandbox not connected - cannot make directory');
-      return false;
+    // If callbacks are ready, create directory directly
+    if (makeDirectoryCallback) {
+      return await makeDirectoryCallback(path);
     }
-    return await makeDirectoryCallback(path);
+    
+    // If sandbox is connecting, queue the operation
+    const state = e2bState.get();
+    if (state.isConnecting || state.isConnected) {
+      console.log(`[E2B Store] Queueing makeDirectory: ${path} (waiting for callbacks)`);
+      return new Promise((resolve, reject) => {
+        pendingOperations.push({
+          type: 'makeDirectory',
+          path,
+          resolve,
+          reject,
+        });
+      });
+    }
+    
+    console.error('E2B sandbox not connected - cannot make directory');
+    return false;
   },
 
   // Run command in E2B sandbox terminal
   async runCommand(command: string): Promise<void> {
-    if (!runCommandCallback) {
-      console.error('E2B sandbox not connected - cannot run command');
+    // If callbacks are ready, run command directly
+    if (runCommandCallback) {
+      await runCommandCallback(command);
       return;
     }
-    await runCommandCallback(command);
+    
+    // If sandbox is connecting, queue the operation
+    const state = e2bState.get();
+    if (state.isConnecting || state.isConnected) {
+      console.log(`[E2B Store] Queueing runCommand: ${command} (waiting for callbacks)`);
+      return new Promise((resolve, reject) => {
+        pendingOperations.push({
+          type: 'runCommand',
+          command,
+          resolve,
+          reject,
+        });
+      });
+    }
+    
+    console.error('E2B sandbox not connected - cannot run command');
   },
 
   // Send input to terminal
@@ -149,9 +261,11 @@ export const e2bStore = {
     return await createSandboxCallback();
   },
 
-  // Check if sandbox is ready
+  // Check if sandbox is ready (or connecting - operations will be queued)
   isReady(): boolean {
-    return e2bState.get().isConnected && !!fileWriteCallback;
+    const state = e2bState.get();
+    // Return true if connected with callbacks, or if connecting (operations will be queued)
+    return (state.isConnected && !!fileWriteCallback) || state.isConnecting;
   },
 
   // Reset state
@@ -164,6 +278,12 @@ export const e2bStore = {
     runCommandCallback = null;
     createSandboxCallback = null;
     activeTerminalId = null;
+    
+    // Clear pending operations and reject them
+    while (pendingOperations.length > 0) {
+      const op = pendingOperations.shift()!;
+      op.reject(new Error('E2B sandbox reset'));
+    }
   },
 };
 
