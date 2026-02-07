@@ -416,16 +416,25 @@ const useFileSystem = () => {
   };
 };
 
+// Helper to get stored API key synchronously
+const getStoredE2bApiKey = (): string => {
+  if (typeof localStorage !== 'undefined') {
+    return localStorage.getItem('e2b_api_key') || '';
+  }
+  return '';
+};
+
 // useE2BSandbox Hook
 const useE2BSandbox = () => {
-  const [state, setState] = useState<E2BSandboxState>({
+  // Initialize with stored API key to avoid race conditions
+  const [state, setState] = useState<E2BSandboxState>(() => ({
     isConnected: false,
     isConnecting: false,
     sandboxId: null,
     error: null,
-    apiKey: '',
+    apiKey: getStoredE2bApiKey(),
     isSyncing: false,
-  });
+  }));
 
   const sandboxRef = useRef<Sandbox | null>(null);
   const terminalsRef = useRef<Map<string, { pid: number; dataCallback: (data: Uint8Array) => void }>>(new Map());
@@ -2453,13 +2462,15 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
   const activeFile = getActiveFile();
   const isSyncing = isLocalSyncing || isSandboxSyncing;
 
-  // Sync API key from store
+  // Sync API key from store - only needed if the hook didn't get the key during initialization
   useEffect(() => {
-    const storedKey = e2bStore.loadApiKey();
-    if (storedKey && storedKey !== internalApiKey) {
-      setInternalApiKey(storedKey);
+    if (!internalApiKey) {
+      const storedKey = e2bStore.loadApiKey();
+      if (storedKey) {
+        setInternalApiKey(storedKey);
+      }
     }
-  }, []);
+  }, [internalApiKey, setInternalApiKey]);
 
   // Update store state when connection changes
   useEffect(() => {
@@ -2519,13 +2530,29 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
 
   // Auto-create sandbox when API key is set and chat starts
   useEffect(() => {
-    const state = e2bState.get();
-    if (chatStarted && state.apiKey && !isConnected && !isConnecting && !autoSandboxCreated && !state.autoCreateTriggered) {
-      e2bStore.setAutoCreateTriggered(true);
+    // Use the internal API key state directly instead of reading from store
+    // This ensures we react to API key changes properly
+    const hasApiKey = internalApiKey && internalApiKey.trim().length > 0;
+    
+    if (chatStarted && hasApiKey && !isConnected && !isConnecting && !autoSandboxCreated) {
+      console.log('[E2B] Auto-creating sandbox - chatStarted:', chatStarted, 'hasApiKey:', hasApiKey);
       setAutoSandboxCreated(true);
+      e2bStore.setAutoCreateTriggered(true);
       createSandbox();
     }
-  }, [chatStarted, isConnected, isConnecting, autoSandboxCreated, createSandbox]);
+  }, [chatStarted, internalApiKey, isConnected, isConnecting, autoSandboxCreated, createSandbox]);
+
+  // Reset autoSandboxCreated when sandbox disconnects so it can auto-create again
+  useEffect(() => {
+    if (!isConnected && !isConnecting && autoSandboxCreated) {
+      // Only reset if we were previously connected and now disconnected
+      const timer = setTimeout(() => {
+        setAutoSandboxCreated(false);
+        e2bStore.setAutoCreateTriggered(false);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isConnected, isConnecting, autoSandboxCreated]);
 
   useEffect(() => {
     if (!isConnected) return;
