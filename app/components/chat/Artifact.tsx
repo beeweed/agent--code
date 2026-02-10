@@ -1,12 +1,13 @@
 import { useStore } from '@nanostores/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { computed } from 'nanostores';
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { createHighlighter, type BundledLanguage, type BundledTheme, type HighlighterGeneric } from 'shiki';
 import type { ActionState } from '~/lib/runtime/action-runner';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { classNames } from '~/utils/classNames';
 import { cubicEasingFn } from '~/utils/easings';
+import { toast } from 'react-toastify';
 
 const highlighterOptions = {
   langs: ['shell'],
@@ -27,6 +28,7 @@ interface ArtifactProps {
 export const Artifact = memo(({ messageId }: ArtifactProps) => {
   const userToggledActions = useRef(false);
   const [showActions, setShowActions] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const artifacts = useStore(workbenchStore.artifacts);
   const artifact = artifacts[messageId];
@@ -41,6 +43,43 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
     userToggledActions.current = true;
     setShowActions(!showActions);
   };
+
+  const handleSyncFiles = useCallback(async () => {
+    if (isSyncing) {
+      return;
+    }
+
+    setIsSyncing(true);
+
+    try {
+      const result = await workbenchStore.syncMissingFiles(messageId);
+
+      if (result.synced > 0) {
+        toast.success(`Synced ${result.synced} missing file(s) to editor`, {
+          position: 'bottom-right',
+          autoClose: 3000,
+        });
+      } else if (result.missing.length === 0) {
+        toast.info('All files are already in the editor', {
+          position: 'bottom-right',
+          autoClose: 2000,
+        });
+      } else {
+        toast.warning('Some files could not be synced', {
+          position: 'bottom-right',
+          autoClose: 3000,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to sync files:', error);
+      toast.error('Failed to sync files', {
+        position: 'bottom-right',
+        autoClose: 3000,
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [messageId, isSyncing]);
 
   useEffect(() => {
     if (actions.length && !showActions && !userToggledActions.current) {
@@ -92,6 +131,31 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
           >
             <div className="bg-bolt-elements-artifacts-borderColor h-[1px]" />
             <div className="p-5 text-left bg-bolt-elements-actions-background">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs text-bolt-elements-textSecondary font-medium uppercase tracking-wider">
+                  Actions
+                </span>
+                <button
+                  onClick={handleSyncFiles}
+                  disabled={isSyncing}
+                  className={classNames(
+                    'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all duration-200',
+                    'bg-bolt-elements-button-secondary-background hover:bg-bolt-elements-button-secondary-backgroundHover',
+                    'text-bolt-elements-button-secondary-text',
+                    'border border-bolt-elements-borderColor',
+                    { 'opacity-60 cursor-not-allowed': isSyncing },
+                  )}
+                  title="Sync missing files to editor"
+                >
+                  <div
+                    className={classNames(
+                      'text-sm',
+                      isSyncing ? 'i-svg-spinners:90-ring-with-bg' : 'i-ph:arrows-clockwise',
+                    )}
+                  />
+                  <span>{isSyncing ? 'Syncing...' : 'Sync Files'}</span>
+                </button>
+              </div>
               <ActionList actions={actions} />
             </div>
           </motion.div>

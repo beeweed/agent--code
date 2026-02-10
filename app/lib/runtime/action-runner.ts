@@ -130,21 +130,24 @@ export class ActionRunner {
     try {
       // Write file to E2B sandbox if connected
       if (e2bStore.isReady()) {
-        const normalizedPath = action.filePath.startsWith('/home/user/') 
-          ? action.filePath 
+        const normalizedPath = action.filePath.startsWith('/home/user/')
+          ? action.filePath
           : `/home/user/${action.filePath.replace(/^\//, '')}`;
-        
+
         // Create parent directories
         const pathParts = normalizedPath.split('/').filter(Boolean);
         let currentPath = '';
+
         for (let i = 0; i < pathParts.length - 1; i++) {
           currentPath += '/' + pathParts[i];
+
           if (currentPath.startsWith('/home/user')) {
             await e2bStore.makeDirectory(currentPath);
           }
         }
-        
+
         const success = await e2bStore.writeFile(normalizedPath, action.content);
+
         if (success) {
           logger.debug(`File written to E2B sandbox: ${normalizedPath}`);
         } else {

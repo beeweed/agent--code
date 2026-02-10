@@ -5,6 +5,11 @@ import type { ActionCallbackData, ArtifactCallbackData } from '~/lib/runtime/mes
 import { unreachable } from '~/utils/unreachable';
 import { EditorStore } from './editor';
 import { FilesStore, type FileMap } from './files';
+import { e2bStore } from './e2b';
+import { WORK_DIR } from '~/utils/constants';
+import { createScopedLogger } from '~/utils/logger';
+
+const logger = createScopedLogger('WorkbenchStore');
 
 export interface ArtifactState {
   id: string;
@@ -265,6 +270,82 @@ export class WorkbenchStore {
     }
 
     artifact.runner.runAction(data);
+  }
+
+  async syncMissingFiles(messageId: string): Promise<{ synced: number; total: number; missing: string[] }> {
+    const artifact = this.#getArtifact(messageId);
+
+    if (!artifact) {
+      logger.warn(`Artifact not found for messageId: ${messageId}`);
+      return { synced: 0, total: 0, missing: [] };
+    }
+
+    const actions = artifact.runner.actions.get();
+    const fileActions = Object.values(actions).filter((action) => action.type === 'file');
+    const currentFiles = this.#filesStore.files.get();
+
+    let syncedCount = 0;
+    const missingFiles: string[] = [];
+
+    for (const action of fileActions) {
+      if (action.type !== 'file') {
+        continue;
+      }
+
+      const normalizedPath = action.filePath.startsWith(WORK_DIR) ? action.filePath : `${WORK_DIR}/${action.filePath}`;
+
+      const existingFile = currentFiles[normalizedPath];
+
+      if (!existingFile || existingFile.type !== 'file') {
+        missingFiles.push(action.filePath);
+        logger.info(`Missing file detected: ${action.filePath}`);
+
+        try {
+          this.#filesStore.addFile(action.filePath, action.content);
+
+          if (e2bStore.isReady()) {
+            const e2bPath = action.filePath.startsWith('/home/user/')
+              ? action.filePath
+              : `/home/user/${action.filePath.replace(/^\//, '')}`;
+
+            const pathParts = e2bPath.split('/').filter(Boolean);
+            let currentPath = '';
+
+            for (let i = 0; i < pathParts.length - 1; i++) {
+              currentPath += '/' + pathParts[i];
+
+              if (currentPath.startsWith('/home/user')) {
+                await e2bStore.makeDirectory(currentPath);
+              }
+            }
+
+            await e2bStore.writeFile(e2bPath, action.content);
+            logger.info(`File synced to E2B sandbox: ${e2bPath}`);
+          }
+
+          syncedCount++;
+          logger.info(`File synced successfully: ${action.filePath}`);
+        } catch (error) {
+          logger.error(`Failed to sync file ${action.filePath}:`, error);
+        }
+      }
+    }
+
+    if (syncedCount > 0) {
+      logger.info(`Synced ${syncedCount} missing files`);
+    } else if (missingFiles.length === 0) {
+      logger.info('All files are already in the file editor');
+    }
+
+    return {
+      synced: syncedCount,
+      total: fileActions.length,
+      missing: missingFiles,
+    };
+  }
+
+  getFilesStore() {
+    return this.#filesStore;
   }
 
   #getArtifact(id: string) {

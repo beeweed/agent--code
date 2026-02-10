@@ -191,11 +191,7 @@ export const SettingsDialog = memo(() => {
                     </button>
                   </div>
                   <DialogButton type="primary" onClick={handleSaveE2bApiKey}>
-                    {e2bSaved ? (
-                      <div className="i-ph:check text-green-400" />
-                    ) : (
-                      'Save'
-                    )}
+                    {e2bSaved ? <div className="i-ph:check text-green-400" /> : 'Save'}
                   </DialogButton>
                 </div>
                 <p className="text-xs text-bolt-elements-textTertiary">

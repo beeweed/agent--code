@@ -4,10 +4,10 @@ import type { editor } from 'monaco-editor';
 import { Terminal as XTerm } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { Sandbox } from 'e2b';
-import { 
-  Menu, 
-  X, 
-  FolderPlus, 
+import {
+  Menu,
+  X,
+  FolderPlus,
   FilePlus,
   TerminalSquare,
   Globe,
@@ -17,16 +17,16 @@ import {
   Upload,
   Download,
   Loader2,
-  Folder, 
-  FolderOpen, 
-  FileCode, 
-  File, 
-  ChevronRight, 
+  Folder,
+  FolderOpen,
+  FileCode,
+  File,
+  ChevronRight,
   ChevronDown,
-  Key, 
-  Play, 
-  Square, 
-  CheckCircle, 
+  Key,
+  Play,
+  Square,
+  CheckCircle,
   AlertCircle,
   Eye,
   EyeOff,
@@ -36,14 +36,16 @@ import {
   Monitor,
   Smartphone,
   Tablet,
-  Maximize2, 
+  Maximize2,
   Minimize2,
-  Plus
+  Plus,
 } from 'lucide-react';
 
-// ============================================================================
-// TYPES
-// ============================================================================
+/*
+ * ============================================================================
+ * TYPES
+ * ============================================================================
+ */
 
 export type FileType = 'file' | 'folder';
 
@@ -106,9 +108,11 @@ type RightPanelTab = 'preview';
 type BottomPanelTab = 'terminal';
 type DeviceMode = 'desktop' | 'tablet' | 'mobile';
 
-// ============================================================================
-// CONSTANTS
-// ============================================================================
+/*
+ * ============================================================================
+ * CONSTANTS
+ * ============================================================================
+ */
 
 const INITIAL_FILES: FileSystemItem[] = [
   {
@@ -117,7 +121,7 @@ const INITIAL_FILES: FileSystemItem[] = [
     name: 'root',
     type: 'folder',
     isOpen: true,
-  }
+  },
 ];
 
 const GEMINI_MODEL_CODE = 'gemini-3-pro-preview';
@@ -128,49 +132,54 @@ const deviceSizes: Record<DeviceMode, { width: string; label: string }> = {
   mobile: { width: '375px', label: 'Mobile' },
 };
 
-// ============================================================================
-// HELPER FUNCTIONS
-// ============================================================================
+/*
+ * ============================================================================
+ * HELPER FUNCTIONS
+ * ============================================================================
+ */
 
 const getLanguageFromFileName = (fileName: string): string => {
   const ext = fileName.split('.').pop()?.toLowerCase() || '';
   const languageMap: Record<string, string> = {
-    'ts': 'typescript',
-    'tsx': 'typescript',
-    'js': 'javascript',
-    'jsx': 'javascript',
-    'json': 'json',
-    'html': 'html',
-    'htm': 'html',
-    'css': 'css',
-    'scss': 'scss',
-    'less': 'less',
-    'md': 'markdown',
-    'py': 'python',
-    'go': 'go',
-    'rs': 'rust',
-    'java': 'java',
-    'c': 'c',
-    'cpp': 'cpp',
-    'h': 'c',
-    'hpp': 'cpp',
-    'yaml': 'yaml',
-    'yml': 'yaml',
-    'xml': 'xml',
-    'sql': 'sql',
-    'sh': 'shell',
-    'bash': 'shell',
-    'zsh': 'shell',
-    'dockerfile': 'dockerfile',
-    'gitignore': 'plaintext',
-    'env': 'plaintext',
+    ts: 'typescript',
+    tsx: 'typescript',
+    js: 'javascript',
+    jsx: 'javascript',
+    json: 'json',
+    html: 'html',
+    htm: 'html',
+    css: 'css',
+    scss: 'scss',
+    less: 'less',
+    md: 'markdown',
+    py: 'python',
+    go: 'go',
+    rs: 'rust',
+    java: 'java',
+    c: 'c',
+    cpp: 'cpp',
+    h: 'c',
+    hpp: 'cpp',
+    yaml: 'yaml',
+    yml: 'yaml',
+    xml: 'xml',
+    sql: 'sql',
+    sh: 'shell',
+    bash: 'shell',
+    zsh: 'shell',
+    dockerfile: 'dockerfile',
+    gitignore: 'plaintext',
+    env: 'plaintext',
   };
+
   return languageMap[ext] || 'plaintext';
 };
 
-// ============================================================================
-// HOOKS
-// ============================================================================
+/*
+ * ============================================================================
+ * HOOKS
+ * ============================================================================
+ */
 
 // useFileSystem Hook
 const useFileSystem = () => {
@@ -178,170 +187,216 @@ const useFileSystem = () => {
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
   const [openFiles, setOpenFiles] = useState<string[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
-  
+
   const syncCallbacksRef = useRef<SyncCallbacks>({});
 
   const setSyncCallbacks = useCallback((callbacks: SyncCallbacks) => {
     syncCallbacksRef.current = callbacks;
   }, []);
 
-  const getFilePath = useCallback((fileId: string, fileList?: FileSystemItem[]): string => {
-    const currentFiles = fileList || files;
-    const file = currentFiles.find(f => f.id === fileId);
-    if (!file) return '';
-    
-    const pathParts: string[] = [file.name];
-    let currentParentId = file.parentId;
-    
-    while (currentParentId && currentParentId !== 'root') {
-      const parent = currentFiles.find(f => f.id === currentParentId);
-      if (parent) {
-        pathParts.unshift(parent.name);
-        currentParentId = parent.parentId;
-      } else {
-        break;
-      }
-    }
-    
-    return '/home/user/' + pathParts.join('/');
-  }, [files]);
+  const getFilePath = useCallback(
+    (fileId: string, fileList?: FileSystemItem[]): string => {
+      const currentFiles = fileList || files;
+      const file = currentFiles.find((f) => f.id === fileId);
 
-  const getChildren = useCallback((parentId: string | null) => {
-    return files.filter(f => f.parentId === parentId).sort((a, b) => {
-      if (a.type === b.type) return a.name.localeCompare(b.name);
-      return a.type === 'folder' ? -1 : 1;
-    });
-  }, [files]);
+      if (!file) {
+        return '';
+      }
+
+      const pathParts: string[] = [file.name];
+      let currentParentId = file.parentId;
+
+      while (currentParentId && currentParentId !== 'root') {
+        const parent = currentFiles.find((f) => f.id === currentParentId);
+
+        if (parent) {
+          pathParts.unshift(parent.name);
+          currentParentId = parent.parentId;
+        } else {
+          break;
+        }
+      }
+
+      return '/home/user/' + pathParts.join('/');
+    },
+    [files],
+  );
+
+  const getChildren = useCallback(
+    (parentId: string | null) => {
+      return files
+        .filter((f) => f.parentId === parentId)
+        .sort((a, b) => {
+          if (a.type === b.type) {
+            return a.name.localeCompare(b.name);
+          }
+
+          return a.type === 'folder' ? -1 : 1;
+        });
+    },
+    [files],
+  );
 
   const openFileById = useCallback((id: string) => {
-    setOpenFiles(prev => {
+    setOpenFiles((prev) => {
       if (!prev.includes(id)) {
         return [...prev, id];
       }
+
       return prev;
     });
     setActiveFileId(id);
   }, []);
 
-  const createFile = useCallback(async (parentId: string, name: string, type: 'file' | 'folder') => {
-    const newFile: FileSystemItem = {
-      id: `${Date.now()}`,
-      parentId,
-      name,
-      type,
-      content: type === 'file' ? '' : undefined,
-      isOpen: type === 'folder' ? true : undefined,
-    };
-    
-    setFiles(prev => [...prev, newFile]);
-    
-    const filePath = (() => {
-      const pathParts: string[] = [name];
-      let currentParentId = parentId;
-      
-      const currentFiles = [...files, newFile];
-      while (currentParentId && currentParentId !== 'root') {
-        const parent = currentFiles.find(f => f.id === currentParentId);
-        if (parent && parent.parentId) {
-          pathParts.unshift(parent.name);
-          currentParentId = parent.parentId;
-        } else {
-          if (parent) pathParts.unshift(parent.name);
-          break;
+  const createFile = useCallback(
+    async (parentId: string, name: string, type: 'file' | 'folder') => {
+      const newFile: FileSystemItem = {
+        id: `${Date.now()}`,
+        parentId,
+        name,
+        type,
+        content: type === 'file' ? '' : undefined,
+        isOpen: type === 'folder' ? true : undefined,
+      };
+
+      setFiles((prev) => [...prev, newFile]);
+
+      const filePath = (() => {
+        const pathParts: string[] = [name];
+        let currentParentId = parentId;
+
+        const currentFiles = [...files, newFile];
+
+        while (currentParentId && currentParentId !== 'root') {
+          const parent = currentFiles.find((f) => f.id === currentParentId);
+
+          if (parent && parent.parentId) {
+            pathParts.unshift(parent.name);
+            currentParentId = parent.parentId;
+          } else {
+            if (parent) {
+              pathParts.unshift(parent.name);
+            }
+
+            break;
+          }
+        }
+
+        return '/home/user/' + pathParts.join('/');
+      })();
+
+      if (type === 'folder' && syncCallbacksRef.current.makeDirectory) {
+        setIsSyncing(true);
+        await syncCallbacksRef.current.makeDirectory(filePath);
+        setIsSyncing(false);
+      } else if (type === 'file' && syncCallbacksRef.current.writeFile) {
+        setIsSyncing(true);
+        await syncCallbacksRef.current.writeFile(filePath, '');
+        setIsSyncing(false);
+        openFileById(newFile.id);
+      }
+
+      if (type === 'file') {
+        openFileById(newFile.id);
+      }
+    },
+    [files, openFileById],
+  );
+
+  const updateFileContent = useCallback(
+    async (id: string, newContent: string) => {
+      setFiles((prev) => prev.map((f) => (f.id === id ? { ...f, content: newContent } : f)));
+
+      const file = files.find((f) => f.id === id);
+
+      if (file && syncCallbacksRef.current.writeFile) {
+        const filePath = getFilePath(id);
+
+        if (filePath) {
+          await syncCallbacksRef.current.writeFile(filePath, newContent);
         }
       }
-      
-      return '/home/user/' + pathParts.join('/');
-    })();
+    },
+    [files, getFilePath],
+  );
 
-    if (type === 'folder' && syncCallbacksRef.current.makeDirectory) {
-      setIsSyncing(true);
-      await syncCallbacksRef.current.makeDirectory(filePath);
-      setIsSyncing(false);
-    } else if (type === 'file' && syncCallbacksRef.current.writeFile) {
-      setIsSyncing(true);
-      await syncCallbacksRef.current.writeFile(filePath, '');
-      setIsSyncing(false);
-      openFileById(newFile.id);
-    }
-    
-    if (type === 'file') {
-      openFileById(newFile.id);
-    }
-  }, [files, openFileById]);
+  const deleteFileItem = useCallback(
+    async (id: string) => {
+      const file = files.find((f) => f.id === id);
 
-  const updateFileContent = useCallback(async (id: string, newContent: string) => {
-    setFiles(prev => prev.map(f => f.id === id ? { ...f, content: newContent } : f));
-    
-    const file = files.find(f => f.id === id);
-    if (file && syncCallbacksRef.current.writeFile) {
+      if (!file) {
+        return;
+      }
+
       const filePath = getFilePath(id);
-      if (filePath) {
-        await syncCallbacksRef.current.writeFile(filePath, newContent);
-      }
-    }
-  }, [files, getFilePath]);
 
-  const deleteFileItem = useCallback(async (id: string) => {
-    const file = files.find(f => f.id === id);
-    if (!file) return;
+      const getDescendants = (parentId: string): string[] => {
+        const children = files.filter((f) => f.parentId === parentId);
+        let descendants: string[] = [];
 
-    const filePath = getFilePath(id);
-    
-    const getDescendants = (parentId: string): string[] => {
-      const children = files.filter(f => f.parentId === parentId);
-      let descendants: string[] = [];
-      for (const child of children) {
-        descendants.push(child.id);
-        if (child.type === 'folder') {
-          descendants = [...descendants, ...getDescendants(child.id)];
+        for (const child of children) {
+          descendants.push(child.id);
+
+          if (child.type === 'folder') {
+            descendants = [...descendants, ...getDescendants(child.id)];
+          }
         }
-      }
-      return descendants;
-    };
 
-    const idsToDelete = [id, ...getDescendants(id)];
-    
-    setOpenFiles(prev => prev.filter(fid => !idsToDelete.includes(fid)));
-    
-    if (activeFileId && idsToDelete.includes(activeFileId)) {
-      const remainingOpen = openFiles.filter(fid => !idsToDelete.includes(fid));
-      setActiveFileId(remainingOpen.length > 0 ? remainingOpen[remainingOpen.length - 1] : null);
-    }
-    
-    setFiles(prev => prev.filter(f => !idsToDelete.includes(f.id)));
-    
-    if (syncCallbacksRef.current.deleteFile && filePath) {
-      setIsSyncing(true);
-      await syncCallbacksRef.current.deleteFile(filePath);
-      setIsSyncing(false);
-    }
-  }, [files, activeFileId, openFiles, getFilePath]);
+        return descendants;
+      };
+
+      const idsToDelete = [id, ...getDescendants(id)];
+
+      setOpenFiles((prev) => prev.filter((fid) => !idsToDelete.includes(fid)));
+
+      if (activeFileId && idsToDelete.includes(activeFileId)) {
+        const remainingOpen = openFiles.filter((fid) => !idsToDelete.includes(fid));
+        setActiveFileId(remainingOpen.length > 0 ? remainingOpen[remainingOpen.length - 1] : null);
+      }
+
+      setFiles((prev) => prev.filter((f) => !idsToDelete.includes(f.id)));
+
+      if (syncCallbacksRef.current.deleteFile && filePath) {
+        setIsSyncing(true);
+        await syncCallbacksRef.current.deleteFile(filePath);
+        setIsSyncing(false);
+      }
+    },
+    [files, activeFileId, openFiles, getFilePath],
+  );
 
   const toggleFolder = useCallback((id: string) => {
-    setFiles(prev => prev.map(f => f.id === id ? { ...f, isOpen: !f.isOpen } : f));
+    setFiles((prev) => prev.map((f) => (f.id === id ? { ...f, isOpen: !f.isOpen } : f)));
   }, []);
 
   const expandFolder = useCallback((id: string) => {
-    setFiles(prev => prev.map(f => f.id === id ? { ...f, isOpen: true } : f));
+    setFiles((prev) => prev.map((f) => (f.id === id ? { ...f, isOpen: true } : f)));
   }, []);
 
-  const openFile = useCallback((id: string) => {
-    openFileById(id);
-  }, [openFileById]);
+  const openFile = useCallback(
+    (id: string) => {
+      openFileById(id);
+    },
+    [openFileById],
+  );
 
-  const closeFile = useCallback((id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setOpenFiles(prev => {
-      const newOpen = prev.filter(fid => fid !== id);
-      if (activeFileId === id) {
-        setActiveFileId(newOpen.length > 0 ? newOpen[newOpen.length - 1] : null);
-      }
-      return newOpen;
-    });
-  }, [activeFileId]);
+  const closeFile = useCallback(
+    (id: string, e: React.MouseEvent) => {
+      e.stopPropagation();
+      setOpenFiles((prev) => {
+        const newOpen = prev.filter((fid) => fid !== id);
 
-  const getActiveFile = useCallback(() => files.find(f => f.id === activeFileId), [files, activeFileId]);
+        if (activeFileId === id) {
+          setActiveFileId(newOpen.length > 0 ? newOpen[newOpen.length - 1] : null);
+        }
+
+        return newOpen;
+      });
+    },
+    [activeFileId],
+  );
+
+  const getActiveFile = useCallback(() => files.find((f) => f.id === activeFileId), [files, activeFileId]);
 
   const resetFiles = useCallback(() => {
     setFiles(INITIAL_FILES);
@@ -350,42 +405,50 @@ const useFileSystem = () => {
   }, []);
 
   const replaceWithSandboxFiles = useCallback((newFiles: FileSystemItem[]) => {
-    const root = INITIAL_FILES.find(f => f.id === 'root');
+    const root = INITIAL_FILES.find((f) => f.id === 'root');
     setFiles([root!, ...newFiles]);
     setOpenFiles([]);
     setActiveFileId(null);
   }, []);
 
-  const mergeWithSandboxFiles = useCallback((sandboxFiles: FileSystemItem[]) => {
-    setFiles(prev => {
-      const existingPaths = new Map<string, string>();
-      
-      for (const file of prev) {
-        const path = getFilePath(file.id, prev);
-        existingPaths.set(path, file.id);
-      }
+  const mergeWithSandboxFiles = useCallback(
+    (sandboxFiles: FileSystemItem[]) => {
+      setFiles((prev) => {
+        const existingPaths = new Map<string, string>();
 
-      const newFiles = [...prev];
-      
-      for (const sandboxFile of sandboxFiles) {
-        const sandboxPath = getFilePath(sandboxFile.id, [{ id: 'root', parentId: null, name: 'root', type: 'folder' }, ...sandboxFiles]);
-        
-        if (!existingPaths.has(sandboxPath)) {
-          newFiles.push(sandboxFile);
-        } else {
-          const existingId = existingPaths.get(sandboxPath);
-          if (existingId && sandboxFile.type === 'file') {
-            const idx = newFiles.findIndex(f => f.id === existingId);
-            if (idx !== -1 && sandboxFile.content !== undefined) {
-              newFiles[idx] = { ...newFiles[idx], content: sandboxFile.content };
+        for (const file of prev) {
+          const path = getFilePath(file.id, prev);
+          existingPaths.set(path, file.id);
+        }
+
+        const newFiles = [...prev];
+
+        for (const sandboxFile of sandboxFiles) {
+          const sandboxPath = getFilePath(sandboxFile.id, [
+            { id: 'root', parentId: null, name: 'root', type: 'folder' },
+            ...sandboxFiles,
+          ]);
+
+          if (!existingPaths.has(sandboxPath)) {
+            newFiles.push(sandboxFile);
+          } else {
+            const existingId = existingPaths.get(sandboxPath);
+
+            if (existingId && sandboxFile.type === 'file') {
+              const idx = newFiles.findIndex((f) => f.id === existingId);
+
+              if (idx !== -1 && sandboxFile.content !== undefined) {
+                newFiles[idx] = { ...newFiles[idx], content: sandboxFile.content };
+              }
             }
           }
         }
-      }
 
-      return newFiles;
-    });
-  }, [getFilePath]);
+        return newFiles;
+      });
+    },
+    [getFilePath],
+  );
 
   const getAllFiles = useCallback(() => {
     return files;
@@ -421,6 +484,7 @@ const getStoredE2bApiKey = (): string => {
   if (typeof localStorage !== 'undefined') {
     return localStorage.getItem('e2b_api_key') || '';
   }
+
   return '';
 };
 
@@ -443,51 +507,57 @@ const useE2BSandbox = () => {
   const lastFilesHashRef = useRef<Map<string, number>>(new Map());
 
   const setApiKey = useCallback((key: string) => {
-    setState(prev => ({ ...prev, apiKey: key, error: null }));
+    setState((prev) => ({ ...prev, apiKey: key, error: null }));
   }, []);
 
   const onFileChange = useCallback((callback: (event: FileChangeEvent) => void) => {
     fileChangeListenersRef.current.push(callback);
+
     return () => {
-      fileChangeListenersRef.current = fileChangeListenersRef.current.filter(cb => cb !== callback);
+      fileChangeListenersRef.current = fileChangeListenersRef.current.filter((cb) => cb !== callback);
     };
   }, []);
 
   const notifyFileChange = useCallback((event: FileChangeEvent) => {
-    fileChangeListenersRef.current.forEach(cb => cb(event));
+    fileChangeListenersRef.current.forEach((cb) => cb(event));
   }, []);
 
-  const listAllFiles = useCallback(async (
-    path: string,
-    result: { path: string; isDir: boolean; content?: string }[] = []
-  ): Promise<{ path: string; isDir: boolean; content?: string }[]> => {
-    if (!sandboxRef.current) return result;
+  const listAllFiles = useCallback(
+    async (
+      path: string,
+      result: { path: string; isDir: boolean; content?: string }[] = [],
+    ): Promise<{ path: string; isDir: boolean; content?: string }[]> => {
+      if (!sandboxRef.current) {
+        return result;
+      }
 
-    try {
-      const files = await sandboxRef.current.files.list(path);
-      
-      for (const file of files) {
-        const fullPath = path === '/' ? `/${file.name}` : `${path}/${file.name}`;
-        const isDirectory = file.type === 'dir';
-        
-        if (isDirectory) {
-          result.push({ path: fullPath, isDir: true });
-          await listAllFiles(fullPath, result);
-        } else {
-          try {
-            const content = await sandboxRef.current.files.read(fullPath);
-            result.push({ path: fullPath, isDir: false, content });
-          } catch (e) {
-            result.push({ path: fullPath, isDir: false });
+      try {
+        const files = await sandboxRef.current.files.list(path);
+
+        for (const file of files) {
+          const fullPath = path === '/' ? `/${file.name}` : `${path}/${file.name}`;
+          const isDirectory = file.type === 'dir';
+
+          if (isDirectory) {
+            result.push({ path: fullPath, isDir: true });
+            await listAllFiles(fullPath, result);
+          } else {
+            try {
+              const content = await sandboxRef.current.files.read(fullPath);
+              result.push({ path: fullPath, isDir: false, content });
+            } catch (e) {
+              result.push({ path: fullPath, isDir: false });
+            }
           }
         }
+      } catch (error) {
+        console.error(`Failed to list files at ${path}:`, error);
       }
-    } catch (error) {
-      console.error(`Failed to list files at ${path}:`, error);
-    }
 
-    return result;
-  }, []);
+      return result;
+    },
+    [],
+  );
 
   const syncLocalToSandbox = useCallback(async (files: FileSystemItem[], basePath = '/home/user') => {
     if (!sandboxRef.current) {
@@ -495,15 +565,16 @@ const useE2BSandbox = () => {
       return false;
     }
 
-    setState(prev => ({ ...prev, isSyncing: true }));
+    setState((prev) => ({ ...prev, isSyncing: true }));
 
     try {
       const buildPath = (file: FileSystemItem, allFiles: FileSystemItem[]): string => {
         const parts: string[] = [file.name];
         let current = file;
-        
+
         while (current.parentId && current.parentId !== 'root') {
-          const parent = allFiles.find(f => f.id === current.parentId);
+          const parent = allFiles.find((f) => f.id === current.parentId);
+
           if (parent) {
             parts.unshift(parent.name);
             current = parent;
@@ -511,21 +582,27 @@ const useE2BSandbox = () => {
             break;
           }
         }
-        
+
         return `${basePath}/${parts.join('/')}`;
       };
 
       const sortedFiles = [...files]
-        .filter(f => f.id !== 'root')
+        .filter((f) => f.id !== 'root')
         .sort((a, b) => {
-          if (a.type === 'folder' && b.type !== 'folder') return -1;
-          if (a.type !== 'folder' && b.type === 'folder') return 1;
+          if (a.type === 'folder' && b.type !== 'folder') {
+            return -1;
+          }
+
+          if (a.type !== 'folder' && b.type === 'folder') {
+            return 1;
+          }
+
           return 0;
         });
 
       for (const file of sortedFiles) {
         const fullPath = buildPath(file, files);
-        
+
         if (file.type === 'folder') {
           try {
             await sandboxRef.current.files.makeDir(fullPath);
@@ -537,133 +614,143 @@ const useE2BSandbox = () => {
         }
       }
 
-      setState(prev => ({ ...prev, isSyncing: false }));
+      setState((prev) => ({ ...prev, isSyncing: false }));
+
       return true;
     } catch (error: any) {
       console.error('Failed to sync local to sandbox:', error);
-      setState(prev => ({ ...prev, isSyncing: false, error: error.message }));
+      setState((prev) => ({ ...prev, isSyncing: false, error: error.message }));
+
       return false;
     }
   }, []);
 
-  const syncSandboxToLocal = useCallback(async (
-    basePath = '/home/user'
-  ): Promise<FileSystemItem[]> => {
-    if (!sandboxRef.current) {
-      console.error('No sandbox connected');
-      return [];
-    }
-
-    setState(prev => ({ ...prev, isSyncing: true }));
-
-    try {
-      const allFiles = await listAllFiles(basePath);
-      const newFiles: FileSystemItem[] = [];
-      const pathToIdMap = new Map<string, string>();
-      
-      pathToIdMap.set(basePath, 'root');
-
-      for (const file of allFiles) {
-        const relativePath = file.path.replace(basePath + '/', '');
-        const parts = relativePath.split('/');
-        const fileName = parts[parts.length - 1];
-        
-        const parentPath = parts.length > 1 
-          ? basePath + '/' + parts.slice(0, -1).join('/')
-          : basePath;
-        const parentId = pathToIdMap.get(parentPath) || 'root';
-        
-        const id = `e2b-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        pathToIdMap.set(file.path, id);
-
-        const newFile: FileSystemItem = {
-          id,
-          parentId,
-          name: fileName,
-          type: file.isDir ? 'folder' : 'file',
-          content: file.isDir ? undefined : (file.content || ''),
-          isOpen: file.isDir ? true : undefined,
-        };
-
-        newFiles.push(newFile);
+  const syncSandboxToLocal = useCallback(
+    async (basePath = '/home/user'): Promise<FileSystemItem[]> => {
+      if (!sandboxRef.current) {
+        console.error('No sandbox connected');
+        return [];
       }
 
-      setState(prev => ({ ...prev, isSyncing: false }));
-      return newFiles;
-    } catch (error: any) {
-      console.error('Failed to sync sandbox to local:', error);
-      setState(prev => ({ ...prev, isSyncing: false, error: error.message }));
-      return [];
-    }
-  }, [listAllFiles]);
-
-  const startFileWatcher = useCallback((basePath = '/home/user') => {
-    if (watcherIntervalRef.current) {
-      clearInterval(watcherIntervalRef.current);
-    }
-
-    const checkForChanges = async () => {
-      if (!sandboxRef.current) return;
+      setState((prev) => ({ ...prev, isSyncing: true }));
 
       try {
-        const files = await listAllFiles(basePath);
-        const currentHash = new Map<string, number>();
+        const allFiles = await listAllFiles(basePath);
+        const newFiles: FileSystemItem[] = [];
+        const pathToIdMap = new Map<string, string>();
 
-        for (const file of files) {
-          const hash = file.content ? file.content.length : (file.isDir ? 0 : -1);
-          currentHash.set(file.path, hash);
+        pathToIdMap.set(basePath, 'root');
 
-          const lastHash = lastFilesHashRef.current.get(file.path);
-          if (lastHash === undefined) {
-            notifyFileChange({
-              type: 'created',
-              path: file.path,
-              isDirectory: file.isDir,
-            });
-          } else if (lastHash !== hash) {
-            notifyFileChange({
-              type: 'modified',
-              path: file.path,
-              isDirectory: file.isDir,
-            });
-          }
+        for (const file of allFiles) {
+          const relativePath = file.path.replace(basePath + '/', '');
+          const parts = relativePath.split('/');
+          const fileName = parts[parts.length - 1];
+
+          const parentPath = parts.length > 1 ? basePath + '/' + parts.slice(0, -1).join('/') : basePath;
+          const parentId = pathToIdMap.get(parentPath) || 'root';
+
+          const id = `e2b-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          pathToIdMap.set(file.path, id);
+
+          const newFile: FileSystemItem = {
+            id,
+            parentId,
+            name: fileName,
+            type: file.isDir ? 'folder' : 'file',
+            content: file.isDir ? undefined : file.content || '',
+            isOpen: file.isDir ? true : undefined,
+          };
+
+          newFiles.push(newFile);
         }
 
-        for (const [path] of lastFilesHashRef.current) {
-          if (!currentHash.has(path)) {
-            notifyFileChange({
-              type: 'deleted',
-              path,
-              isDirectory: false,
-            });
-          }
-        }
+        setState((prev) => ({ ...prev, isSyncing: false }));
 
-        lastFilesHashRef.current = currentHash;
-      } catch (error) {
-        console.error('Error checking for file changes:', error);
+        return newFiles;
+      } catch (error: any) {
+        console.error('Failed to sync sandbox to local:', error);
+        setState((prev) => ({ ...prev, isSyncing: false, error: error.message }));
+
+        return [];
       }
-    };
+    },
+    [listAllFiles],
+  );
 
-    watcherIntervalRef.current = setInterval(checkForChanges, 2000);
-    checkForChanges();
-  }, [listAllFiles, notifyFileChange]);
+  const startFileWatcher = useCallback(
+    (basePath = '/home/user') => {
+      if (watcherIntervalRef.current) {
+        clearInterval(watcherIntervalRef.current);
+      }
+
+      const checkForChanges = async () => {
+        if (!sandboxRef.current) {
+          return;
+        }
+
+        try {
+          const files = await listAllFiles(basePath);
+          const currentHash = new Map<string, number>();
+
+          for (const file of files) {
+            const hash = file.content ? file.content.length : file.isDir ? 0 : -1;
+            currentHash.set(file.path, hash);
+
+            const lastHash = lastFilesHashRef.current.get(file.path);
+
+            if (lastHash === undefined) {
+              notifyFileChange({
+                type: 'created',
+                path: file.path,
+                isDirectory: file.isDir,
+              });
+            } else if (lastHash !== hash) {
+              notifyFileChange({
+                type: 'modified',
+                path: file.path,
+                isDirectory: file.isDir,
+              });
+            }
+          }
+
+          for (const [path] of lastFilesHashRef.current) {
+            if (!currentHash.has(path)) {
+              notifyFileChange({
+                type: 'deleted',
+                path,
+                isDirectory: false,
+              });
+            }
+          }
+
+          lastFilesHashRef.current = currentHash;
+        } catch (error) {
+          console.error('Error checking for file changes:', error);
+        }
+      };
+
+      watcherIntervalRef.current = setInterval(checkForChanges, 2000);
+      checkForChanges();
+    },
+    [listAllFiles, notifyFileChange],
+  );
 
   const stopFileWatcher = useCallback(() => {
     if (watcherIntervalRef.current) {
       clearInterval(watcherIntervalRef.current);
       watcherIntervalRef.current = null;
     }
+
     lastFilesHashRef.current.clear();
   }, []);
 
   const createSandbox = useCallback(async () => {
     if (!state.apiKey) {
-      setState(prev => ({ ...prev, error: 'Please enter your E2B API key' }));
+      setState((prev) => ({ ...prev, error: 'Please enter your E2B API key' }));
       return null;
     }
 
-    setState(prev => ({ ...prev, isConnecting: true, error: null }));
+    setState((prev) => ({ ...prev, isConnecting: true, error: null }));
 
     try {
       const sandbox = await Sandbox.create({
@@ -673,7 +760,7 @@ const useE2BSandbox = () => {
 
       sandboxRef.current = sandbox;
 
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         isConnected: true,
         isConnecting: false,
@@ -686,59 +773,59 @@ const useE2BSandbox = () => {
       return sandbox;
     } catch (error: any) {
       console.error('Failed to create sandbox:', error);
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         isConnecting: false,
         error: error.message || 'Failed to create sandbox',
       }));
+
       return null;
     }
   }, [state.apiKey, startFileWatcher]);
 
-  const createTerminal = useCallback(async (
-    terminalId: string,
-    cols: number,
-    rows: number,
-    onData: (data: Uint8Array) => void
-  ) => {
-    if (!sandboxRef.current) {
-      console.error('No sandbox connected');
-      return null;
-    }
+  const createTerminal = useCallback(
+    async (terminalId: string, cols: number, rows: number, onData: (data: Uint8Array) => void) => {
+      if (!sandboxRef.current) {
+        console.error('No sandbox connected');
+        return null;
+      }
 
-    try {
-      const terminal = await sandboxRef.current.pty.create({
-        cols,
-        rows,
-        onData: (data: Uint8Array) => {
-          const terminalInfo = terminalsRef.current.get(terminalId);
-          if (terminalInfo?.dataCallback) {
-            terminalInfo.dataCallback(data);
-          }
-        },
-        timeoutMs: 0,
-      });
+      try {
+        const terminal = await sandboxRef.current.pty.create({
+          cols,
+          rows,
+          onData: (data: Uint8Array) => {
+            const terminalInfo = terminalsRef.current.get(terminalId);
 
-      terminalsRef.current.set(terminalId, { pid: terminal.pid, dataCallback: onData });
-      return terminal;
-    } catch (error: any) {
-      console.error('Failed to create terminal:', error);
-      setState(prev => ({ ...prev, error: error.message }));
-      return null;
-    }
-  }, []);
+            if (terminalInfo?.dataCallback) {
+              terminalInfo.dataCallback(data);
+            }
+          },
+          timeoutMs: 0,
+        });
+
+        terminalsRef.current.set(terminalId, { pid: terminal.pid, dataCallback: onData });
+
+        return terminal;
+      } catch (error: any) {
+        console.error('Failed to create terminal:', error);
+        setState((prev) => ({ ...prev, error: error.message }));
+
+        return null;
+      }
+    },
+    [],
+  );
 
   const sendTerminalInput = useCallback(async (terminalId: string, data: string) => {
     const terminalInfo = terminalsRef.current.get(terminalId);
+
     if (!sandboxRef.current || !terminalInfo) {
       return;
     }
 
     try {
-      await sandboxRef.current.pty.sendInput(
-        terminalInfo.pid,
-        new TextEncoder().encode(data)
-      );
+      await sandboxRef.current.pty.sendInput(terminalInfo.pid, new TextEncoder().encode(data));
     } catch (error: any) {
       console.error('Failed to send terminal input:', error);
     }
@@ -746,6 +833,7 @@ const useE2BSandbox = () => {
 
   const resizeTerminal = useCallback(async (terminalId: string, cols: number, rows: number) => {
     const terminalInfo = terminalsRef.current.get(terminalId);
+
     if (!sandboxRef.current || !terminalInfo) {
       return;
     }
@@ -759,6 +847,7 @@ const useE2BSandbox = () => {
 
   const closeTerminal = useCallback(async (terminalId: string) => {
     const terminalInfo = terminalsRef.current.get(terminalId);
+
     if (!sandboxRef.current || !terminalInfo) {
       return;
     }
@@ -841,12 +930,16 @@ const useE2BSandbox = () => {
     }
   }, []);
 
-  const getPreviewUrl = useCallback((port: number): string | null => {
-    if (!state.sandboxId) {
-      return null;
-    }
-    return `https://${port}-${state.sandboxId}.e2b.app`;
-  }, [state.sandboxId]);
+  const getPreviewUrl = useCallback(
+    (port: number): string | null => {
+      if (!state.sandboxId) {
+        return null;
+      }
+
+      return `https://${port}-${state.sandboxId}.e2b.app`;
+    },
+    [state.sandboxId],
+  );
 
   const runCommand = useCallback(async (command: string, background: boolean = false) => {
     if (!sandboxRef.current) {
@@ -875,7 +968,7 @@ const useE2BSandbox = () => {
       terminalsRef.current.clear();
     }
 
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       isConnected: false,
       sandboxId: null,
@@ -913,9 +1006,11 @@ const useE2BSandbox = () => {
   };
 };
 
-// ============================================================================
-// COMPONENTS
-// ============================================================================
+/*
+ * ============================================================================
+ * COMPONENTS
+ * ============================================================================
+ */
 
 // CodeEditor Component
 interface EditorProps {
@@ -945,11 +1040,14 @@ const CodeEditor: React.FC<EditorProps> = ({ file, onChange }) => {
     editor.focus();
   }, []);
 
-  const handleChange = useCallback((value: string | undefined) => {
-    if (file && value !== undefined) {
-      onChange(file.id, value);
-    }
-  }, [file, onChange]);
+  const handleChange = useCallback(
+    (value: string | undefined) => {
+      if (file && value !== undefined) {
+        onChange(file.id, value);
+      }
+    },
+    [file, onChange],
+  );
 
   if (!file) {
     return (
@@ -1055,6 +1153,7 @@ const CreationForm: React.FC<{
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
     if (name.trim()) {
       onSubmit(name.trim());
     } else {
@@ -1063,25 +1162,29 @@ const CreationForm: React.FC<{
   };
 
   return (
-    <form 
-      onSubmit={handleSubmit} 
+    <form
+      onSubmit={handleSubmit}
       className="flex items-center px-2 py-1 bg-[#2a2a2b] border-l-2 border-blue-500"
       style={{ paddingLeft: `${level * 12 + 8}px` }}
-      onClick={e => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
     >
       <span className="mr-2 text-gray-400">
-        {type === 'folder' ? <Folder size={16} className="text-yellow-500"/> : <File size={16} className="text-blue-400"/>}
+        {type === 'folder' ? (
+          <Folder size={16} className="text-yellow-500" />
+        ) : (
+          <File size={16} className="text-blue-400" />
+        )}
       </span>
       <input
         ref={inputRef}
         type="text"
         className="bg-transparent text-white outline-none w-full text-xs placeholder-gray-500"
-        placeholder={type === 'folder' ? "Folder name..." : "File name..."}
+        placeholder={type === 'folder' ? 'Folder name...' : 'File name...'}
         value={name}
-        onChange={e => setName(e.target.value)}
+        onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Escape') {
-             onCancel();
+            onCancel();
           }
         }}
       />
@@ -1113,13 +1216,18 @@ const FileTree: React.FC<FileTreeProps> = ({
   onOpenFile,
   onStartCreating,
   onCancelCreating,
-  onCreate
+  onCreate,
 }) => {
   const getChildren = (pid: string | null) => {
-    return files.filter(f => f.parentId === pid).sort((a, b) => {
-        if (a.type === b.type) return a.name.localeCompare(b.name);
+    return files
+      .filter((f) => f.parentId === pid)
+      .sort((a, b) => {
+        if (a.type === b.type) {
+          return a.name.localeCompare(b.name);
+        }
+
         return a.type === 'folder' ? -1 : 1;
-    });
+      });
   };
 
   const handleItemClick = (e: React.MouseEvent, item: FileSystemItem) => {
@@ -1144,9 +1252,9 @@ const FileTree: React.FC<FileTreeProps> = ({
         />
       )}
 
-      {children.map(item => (
+      {children.map((item) => (
         <div key={item.id}>
-          <div 
+          <div
             className={`
               flex items-center group px-2 py-1 cursor-pointer transition-colors relative
               ${item.id === activeFileId ? 'bg-blue-900/40 text-blue-300' : 'text-gray-400 hover:bg-[#2a2a2b] hover:text-gray-200'}
@@ -1156,13 +1264,23 @@ const FileTree: React.FC<FileTreeProps> = ({
           >
             <span className="mr-1 opacity-70">
               {item.type === 'folder' ? (
-                item.isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />
-              ) : <span className="w-3.5 inline-block" />}
+                item.isOpen ? (
+                  <ChevronDown size={14} />
+                ) : (
+                  <ChevronRight size={14} />
+                )
+              ) : (
+                <span className="w-3.5 inline-block" />
+              )}
             </span>
-            
+
             <span className={`mr-2 ${item.type === 'folder' ? 'text-yellow-500' : 'text-blue-400'}`}>
               {item.type === 'folder' ? (
-                item.isOpen ? <FolderOpen size={16} /> : <Folder size={16} />
+                item.isOpen ? (
+                  <FolderOpen size={16} />
+                ) : (
+                  <Folder size={16} />
+                )
               ) : (
                 <FileCode size={16} />
               )}
@@ -1171,33 +1289,39 @@ const FileTree: React.FC<FileTreeProps> = ({
             <span className="truncate flex-1">{item.name}</span>
 
             <div className="hidden group-hover:flex items-center space-x-1 ml-2">
-                {item.type === 'folder' && (
-                  <>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); onStartCreating(item.id, 'file'); }}
-                      className="p-0.5 hover:bg-gray-700 rounded text-gray-400 hover:text-white"
-                      title="New File"
-                    >
-                      <FilePlus size={12} />
-                    </button>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); onStartCreating(item.id, 'folder'); }}
-                      className="p-0.5 hover:bg-gray-700 rounded text-gray-400 hover:text-white"
-                      title="New Folder"
-                    >
-                      <FolderPlus size={12} />
-                    </button>
-                  </>
-                )}
+              {item.type === 'folder' && (
+                <>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onStartCreating(item.id, 'file');
+                    }}
+                    className="p-0.5 hover:bg-gray-700 rounded text-gray-400 hover:text-white"
+                    title="New File"
+                  >
+                    <FilePlus size={12} />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onStartCreating(item.id, 'folder');
+                    }}
+                    className="p-0.5 hover:bg-gray-700 rounded text-gray-400 hover:text-white"
+                    title="New Folder"
+                  >
+                    <FolderPlus size={12} />
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
           {item.type === 'folder' && item.isOpen && (
             <div>
-              <FileTree 
-                parentId={item.id} 
-                level={level + 1} 
-                files={files} 
+              <FileTree
+                parentId={item.id}
+                level={level + 1}
+                files={files}
                 activeFileId={activeFileId}
                 creationState={creationState}
                 onToggleFolder={onToggleFolder}
@@ -1221,11 +1345,7 @@ interface PreviewPanelProps {
   defaultPort?: number;
 }
 
-const PreviewPanel: React.FC<PreviewPanelProps> = ({
-  sandboxId,
-  isConnected,
-  defaultPort = 3000,
-}) => {
+const PreviewPanel: React.FC<PreviewPanelProps> = ({ sandboxId, isConnected, defaultPort = 3000 }) => {
   const [port, setPort] = useState(defaultPort.toString());
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -1236,6 +1356,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
   useEffect(() => {
     if (sandboxId && port) {
       const portNum = parseInt(port, 10);
+
       if (!isNaN(portNum) && portNum > 0 && portNum < 65536) {
         setPreviewUrl(`https://${portNum}-${sandboxId}.e2b.app`);
         setError(null);
@@ -1249,7 +1370,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
   }, [sandboxId, port]);
 
   const handleRefresh = () => {
-    setKey(prev => prev + 1);
+    setKey((prev) => prev + 1);
     setIsLoading(true);
   };
 
@@ -1282,7 +1403,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
       <div className="h-10 bg-[#2d2d2d] border-b border-[#333] flex items-center px-3 gap-2 flex-shrink-0">
         <Globe size={14} className="text-blue-400 flex-shrink-0" />
         <span className="text-xs text-gray-400 flex-shrink-0">Preview</span>
-        
+
         <div className="flex items-center ml-2">
           <span className="text-xs text-gray-500 mr-1">Port:</span>
           <input
@@ -1364,9 +1485,9 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
             </button>
           </div>
         ) : previewUrl ? (
-          <div 
+          <div
             className="h-full bg-white rounded-lg overflow-hidden shadow-2xl transition-all duration-300"
-            style={{ 
+            style={{
               width: deviceSizes[deviceMode].width,
               maxWidth: '100%',
             }}
@@ -1396,11 +1517,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
 
       <div className="h-6 bg-[#252526] border-t border-[#333] flex items-center px-3 text-[10px] text-gray-500">
         <span>{deviceSizes[deviceMode].label}</span>
-        {sandboxId && (
-          <span className="ml-auto truncate max-w-[200px]">
-            Sandbox: {sandboxId.substring(0, 12)}...
-          </span>
-        )}
+        {sandboxId && <span className="ml-auto truncate max-w-[200px]">Sandbox: {sandboxId.substring(0, 12)}...</span>}
       </div>
     </div>
   );
@@ -1433,7 +1550,7 @@ const SandboxControls: React.FC<SandboxControlsProps> = ({
 
   return (
     <div className="bg-[#252526] border-b border-[#333]">
-      <div 
+      <div
         className="h-10 flex items-center justify-between px-4 cursor-pointer hover:bg-[#2a2a2b]"
         onClick={() => setIsExpanded(!isExpanded)}
       >
@@ -1443,9 +1560,7 @@ const SandboxControls: React.FC<SandboxControlsProps> = ({
           ) : (
             <CloudOff size={16} className="text-gray-500" />
           )}
-          <span className="text-xs font-medium text-gray-300">
-            E2B Sandbox
-          </span>
+          <span className="text-xs font-medium text-gray-300">E2B Sandbox</span>
           {isConnected && sandboxId && (
             <span className="text-[10px] text-gray-500 bg-[#1e1e1e] px-2 py-0.5 rounded">
               {sandboxId.substring(0, 8)}...
@@ -1499,9 +1614,9 @@ const SandboxControls: React.FC<SandboxControlsProps> = ({
             </div>
             <p className="text-[10px] text-gray-600">
               Get your API key from{' '}
-              <a 
-                href="https://e2b.dev/dashboard" 
-                target="_blank" 
+              <a
+                href="https://e2b.dev/dashboard"
+                target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-400 hover:underline"
               >
@@ -1565,7 +1680,12 @@ const SandboxControls: React.FC<SandboxControlsProps> = ({
 // Terminal Component
 interface TerminalComponentProps {
   isConnected: boolean;
-  onCreateTerminal: (terminalId: string, cols: number, rows: number, onData: (data: Uint8Array) => void) => Promise<any>;
+  onCreateTerminal: (
+    terminalId: string,
+    cols: number,
+    rows: number,
+    onData: (data: Uint8Array) => void,
+  ) => Promise<any>;
   onSendInput: (terminalId: string, data: string) => Promise<void>;
   onResize: (terminalId: string, cols: number, rows: number) => Promise<void>;
   onCloseTerminal: (terminalId: string) => Promise<void>;
@@ -1588,28 +1708,32 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({
   const [isExpanded, setIsExpanded] = useState(false);
   const [autoSync, setAutoSync] = useState(true);
   const [terminalCounter, setTerminalCounter] = useState(1);
-  
+
   const syncDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const xtermInstancesRef = useRef<Map<string, { xterm: XTerm; fitAddon: FitAddon }>>(new Map());
 
   const triggerSync = useCallback(() => {
-    if (!autoSync || !onCommandComplete) return;
-    
+    if (!autoSync || !onCommandComplete) {
+      return;
+    }
+
     if (syncDebounceRef.current) {
       clearTimeout(syncDebounceRef.current);
     }
-    
+
     syncDebounceRef.current = setTimeout(() => {
       onCommandComplete();
     }, 1500);
   }, [autoSync, onCommandComplete]);
 
   const createNewTerminal = useCallback(async () => {
-    if (!isConnected) return;
+    if (!isConnected) {
+      return;
+    }
 
     const terminalId = `terminal-${Date.now()}`;
     const terminalName = `Terminal ${terminalCounter}`;
-    setTerminalCounter(prev => prev + 1);
+    setTerminalCounter((prev) => prev + 1);
 
     const newTerminal: TerminalInstance = {
       id: terminalId,
@@ -1619,89 +1743,87 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({
       isReady: false,
     };
 
-    setTerminals(prev => [...prev, newTerminal]);
+    setTerminals((prev) => [...prev, newTerminal]);
     setActiveTerminalId(terminalId);
     setIsInitializing(terminalId);
   }, [isConnected, terminalCounter]);
 
-  const initializeTerminal = useCallback(async (terminalId: string) => {
-    const terminalDiv = terminalRefs.current.get(terminalId);
-    if (!terminalDiv || xtermInstancesRef.current.has(terminalId)) return;
+  const initializeTerminal = useCallback(
+    async (terminalId: string) => {
+      const terminalDiv = terminalRefs.current.get(terminalId);
 
-    const xterm = new XTerm({
-      cursorBlink: true,
-      fontSize: 13,
-      fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, Monaco, "Courier New", monospace',
-      theme: {
-        background: '#1e1e1e',
-        foreground: '#d4d4d4',
-        cursor: '#d4d4d4',
-        cursorAccent: '#1e1e1e',
-        selectionBackground: '#264f78',
-        black: '#000000',
-        red: '#cd3131',
-        green: '#0dbc79',
-        yellow: '#e5e510',
-        blue: '#2472c8',
-        magenta: '#bc3fbc',
-        cyan: '#11a8cd',
-        white: '#e5e5e5',
-        brightBlack: '#666666',
-        brightRed: '#f14c4c',
-        brightGreen: '#23d18b',
-        brightYellow: '#f5f543',
-        brightBlue: '#3b8eea',
-        brightMagenta: '#d670d6',
-        brightCyan: '#29b8db',
-        brightWhite: '#e5e5e5',
-      },
-      allowProposedApi: true,
-    });
-
-    const fitAddon = new FitAddon();
-    xterm.loadAddon(fitAddon);
-    xterm.open(terminalDiv);
-
-    xtermInstancesRef.current.set(terminalId, { xterm, fitAddon });
-
-    setTimeout(() => {
-      fitAddon.fit();
-    }, 100);
-
-    const cols = xterm.cols;
-    const rows = xterm.rows;
-
-    const terminal = await onCreateTerminal(terminalId, cols, rows, (data: Uint8Array) => {
-      xterm.write(data);
-      
-      const text = new TextDecoder().decode(data);
-      const promptPatterns = [
-        /\$\s*$/,
-        />\s*$/,
-        /#\s*$/,
-        /\]\s*$/,
-        /\~\]\$/,
-      ];
-      
-      const hasPrompt = promptPatterns.some(pattern => pattern.test(text));
-      
-      if (hasPrompt) {
-        triggerSync();
+      if (!terminalDiv || xtermInstancesRef.current.has(terminalId)) {
+        return;
       }
-    });
 
-    if (terminal) {
-      xterm.onData((data) => {
-        onSendInput(terminalId, data);
+      const xterm = new XTerm({
+        cursorBlink: true,
+        fontSize: 13,
+        fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", Menlo, Monaco, "Courier New", monospace',
+        theme: {
+          background: '#1e1e1e',
+          foreground: '#d4d4d4',
+          cursor: '#d4d4d4',
+          cursorAccent: '#1e1e1e',
+          selectionBackground: '#264f78',
+          black: '#000000',
+          red: '#cd3131',
+          green: '#0dbc79',
+          yellow: '#e5e510',
+          blue: '#2472c8',
+          magenta: '#bc3fbc',
+          cyan: '#11a8cd',
+          white: '#e5e5e5',
+          brightBlack: '#666666',
+          brightRed: '#f14c4c',
+          brightGreen: '#23d18b',
+          brightYellow: '#f5f543',
+          brightBlue: '#3b8eea',
+          brightMagenta: '#d670d6',
+          brightCyan: '#29b8db',
+          brightWhite: '#e5e5e5',
+        },
+        allowProposedApi: true,
       });
 
-      setTerminals(prev => prev.map(t => 
-        t.id === terminalId ? { ...t, xterm, fitAddon, isReady: true } : t
-      ));
-    }
+      const fitAddon = new FitAddon();
+      xterm.loadAddon(fitAddon);
+      xterm.open(terminalDiv);
 
-    setIsInitializing(null);
-  }, [onCreateTerminal, onSendInput, triggerSync]);
+      xtermInstancesRef.current.set(terminalId, { xterm, fitAddon });
+
+      setTimeout(() => {
+        fitAddon.fit();
+      }, 100);
+
+      const cols = xterm.cols;
+      const rows = xterm.rows;
+
+      const terminal = await onCreateTerminal(terminalId, cols, rows, (data: Uint8Array) => {
+        xterm.write(data);
+
+        const text = new TextDecoder().decode(data);
+        const promptPatterns = [/\$\s*$/, />\s*$/, /#\s*$/, /\]\s*$/, /\~\]\$/];
+
+        const hasPrompt = promptPatterns.some((pattern) => pattern.test(text));
+
+        if (hasPrompt) {
+          triggerSync();
+        }
+      });
+
+      if (terminal) {
+        xterm.onData((data) => {
+          onSendInput(terminalId, data);
+        });
+
+        setTerminals((prev) => prev.map((t) => (t.id === terminalId ? { ...t, xterm, fitAddon, isReady: true } : t)));
+      }
+
+      setIsInitializing(null);
+    },
+    [onCreateTerminal, onSendInput, triggerSync],
+  );
 
   useEffect(() => {
     if (isConnected && terminals.length === 0) {
@@ -1727,12 +1849,14 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({
     };
 
     window.addEventListener('resize', handleResize);
+
     return () => window.removeEventListener('resize', handleResize);
   }, [onResize]);
 
   useEffect(() => {
     if (activeTerminalId) {
       const instance = xtermInstancesRef.current.get(activeTerminalId);
+
       if (instance) {
         setTimeout(() => {
           instance.fitAddon.fit();
@@ -1742,28 +1866,34 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({
     }
   }, [activeTerminalId, isExpanded]);
 
-  const handleCloseTerminal = useCallback(async (terminalId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    
-    const instance = xtermInstancesRef.current.get(terminalId);
-    if (instance) {
-      instance.xterm.dispose();
-      xtermInstancesRef.current.delete(terminalId);
-    }
-    
-    await onCloseTerminal(terminalId);
-    terminalRefs.current.delete(terminalId);
-    
-    setTerminals(prev => {
-      const newTerminals = prev.filter(t => t.id !== terminalId);
-      if (activeTerminalId === terminalId && newTerminals.length > 0) {
-        setActiveTerminalId(newTerminals[newTerminals.length - 1].id);
-      } else if (newTerminals.length === 0) {
-        setActiveTerminalId(null);
+  const handleCloseTerminal = useCallback(
+    async (terminalId: string, e: React.MouseEvent) => {
+      e.stopPropagation();
+
+      const instance = xtermInstancesRef.current.get(terminalId);
+
+      if (instance) {
+        instance.xterm.dispose();
+        xtermInstancesRef.current.delete(terminalId);
       }
-      return newTerminals;
-    });
-  }, [activeTerminalId, onCloseTerminal]);
+
+      await onCloseTerminal(terminalId);
+      terminalRefs.current.delete(terminalId);
+
+      setTerminals((prev) => {
+        const newTerminals = prev.filter((t) => t.id !== terminalId);
+
+        if (activeTerminalId === terminalId && newTerminals.length > 0) {
+          setActiveTerminalId(newTerminals[newTerminals.length - 1].id);
+        } else if (newTerminals.length === 0) {
+          setActiveTerminalId(null);
+        }
+
+        return newTerminals;
+      });
+    },
+    [activeTerminalId, onCloseTerminal],
+  );
 
   const handleManualSync = () => {
     if (onCommandComplete) {
@@ -1796,16 +1926,16 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({
               onClick={() => setActiveTerminalId(terminal.id)}
               className={`
                 flex items-center px-3 py-1 text-xs cursor-pointer select-none min-w-[100px] max-w-[150px] group
-                ${terminal.id === activeTerminalId 
-                  ? 'bg-[#1e1e1e] text-green-400 border-t border-l border-r border-[#333]' 
-                  : 'text-gray-500 hover:text-gray-300 hover:bg-[#333]'}
+                ${
+                  terminal.id === activeTerminalId
+                    ? 'bg-[#1e1e1e] text-green-400 border-t border-l border-r border-[#333]'
+                    : 'text-gray-500 hover:text-gray-300 hover:bg-[#333]'
+                }
               `}
             >
               <TerminalSquare size={12} className="mr-1.5 flex-shrink-0" />
               <span className="truncate flex-1">{terminal.name}</span>
-              {isInitializing === terminal.id && (
-                <Loader2 size={10} className="animate-spin ml-1 flex-shrink-0" />
-              )}
+              {isInitializing === terminal.id && <Loader2 size={10} className="animate-spin ml-1 flex-shrink-0" />}
               {terminals.length > 1 && (
                 <button
                   onClick={(e) => handleCloseTerminal(terminal.id, e)}
@@ -1816,7 +1946,7 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({
               )}
             </div>
           ))}
-          
+
           <button
             onClick={createNewTerminal}
             className="flex items-center justify-center w-7 h-7 text-gray-500 hover:text-white hover:bg-[#444] rounded ml-1 flex-shrink-0"
@@ -1834,15 +1964,11 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({
           >
             Auto-sync: {autoSync ? 'ON' : 'OFF'}
           </button>
-          
-          <button
-            onClick={handleManualSync}
-            className="text-gray-400 hover:text-white p-1"
-            title="Sync files now"
-          >
+
+          <button onClick={handleManualSync} className="text-gray-400 hover:text-white p-1" title="Sync files now">
             <RefreshCw size={12} />
           </button>
-          
+
           <button
             onClick={() => setIsExpanded(!isExpanded)}
             className="text-gray-400 hover:text-white p-1"
@@ -1862,7 +1988,7 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({
             style={{ minHeight: isExpanded ? 'calc(100vh - 32px)' : '200px' }}
           />
         ))}
-        
+
         {terminals.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center text-gray-500">
             <TerminalSquare size={32} className="mb-2 opacity-30" />
@@ -1874,9 +2000,11 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({
   );
 };
 
-// ============================================================================
-// MAIN APP COMPONENT
-// ============================================================================
+/*
+ * ============================================================================
+ * MAIN APP COMPONENT
+ * ============================================================================
+ */
 
 const App = () => {
   const {
@@ -1932,10 +2060,10 @@ const App = () => {
   const [rightPanelWidth, setRightPanelWidth] = useState(450);
   const [bottomPanelHeight, setBottomPanelHeight] = useState(256);
   const [isResizing, setIsResizing] = useState<'sidebar' | 'right' | 'bottom' | null>(null);
-  
+
   const containerRef = useRef<HTMLDivElement>(null);
   const editorAreaRef = useRef<HTMLDivElement>(null);
-  
+
   const activeFile = getActiveFile();
   const isSyncing = isLocalSyncing || isSandboxSyncing;
 
@@ -1950,10 +2078,13 @@ const App = () => {
   }, [isConnected, writeFile, makeDirectory, deleteFile, setSyncCallbacks]);
 
   useEffect(() => {
-    if (!isConnected) return;
+    if (!isConnected) {
+      return;
+    }
 
     const unsubscribe = onFileChange((event) => {
       console.log('File change event:', event);
+
       if (event.type === 'created' || event.type === 'modified') {
         setSyncStatus('idle');
       }
@@ -1965,12 +2096,16 @@ const App = () => {
   }, [isConnected, onFileChange]);
 
   const handleInitialSync = useCallback(async () => {
-    if (!isConnected) return;
-    
+    if (!isConnected) {
+      return;
+    }
+
     setSyncStatus('syncing');
+
     const allFiles = getAllFiles();
     const success = await syncLocalToSandbox(allFiles);
     setSyncStatus(success ? 'success' : 'error');
+
     if (success) {
       setLastSyncTime(new Date());
     }
@@ -1978,9 +2113,11 @@ const App = () => {
 
   const handlePushToSandbox = useCallback(async () => {
     setSyncStatus('syncing');
+
     const allFiles = getAllFiles();
     const success = await syncLocalToSandbox(allFiles);
     setSyncStatus(success ? 'success' : 'error');
+
     if (success) {
       setLastSyncTime(new Date());
     }
@@ -1988,7 +2125,9 @@ const App = () => {
 
   const handlePullFromSandbox = useCallback(async () => {
     setSyncStatus('syncing');
+
     const sandboxFiles = await syncSandboxToLocal();
+
     if (sandboxFiles.length > 0) {
       replaceWithSandboxFiles(sandboxFiles);
       setSyncStatus('success');
@@ -2004,6 +2143,7 @@ const App = () => {
 
   const handleStartCreating = (parentId: string, type: 'file' | 'folder') => {
     setCreationState({ parentId, type });
+
     if (parentId !== 'root') {
       expandFolder(parentId);
     }
@@ -2018,27 +2158,36 @@ const App = () => {
     setCreationState(null);
   };
 
-  const startResize = useCallback((panel: 'sidebar' | 'right' | 'bottom') => (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    setIsResizing(panel);
-  }, []);
+  const startResize = useCallback(
+    (panel: 'sidebar' | 'right' | 'bottom') => (e: React.MouseEvent | React.TouchEvent) => {
+      e.preventDefault();
+      setIsResizing(panel);
+    },
+    [],
+  );
 
   useEffect(() => {
-    if (!isResizing) return;
+    if (!isResizing) {
+      return;
+    }
 
     const getClientCoords = (e: MouseEvent | TouchEvent): { clientX: number; clientY: number } => {
       if ('touches' in e && e.touches.length > 0) {
         return { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY };
       }
+
       if ('changedTouches' in e && e.changedTouches.length > 0) {
         return { clientX: e.changedTouches[0].clientX, clientY: e.changedTouches[0].clientY };
       }
+
       return { clientX: (e as MouseEvent).clientX, clientY: (e as MouseEvent).clientY };
     };
 
     const handleMove = (e: MouseEvent | TouchEvent) => {
-      if (!containerRef.current) return;
-      
+      if (!containerRef.current) {
+        return;
+      }
+
       if ('touches' in e) {
         e.preventDefault();
       }
@@ -2068,7 +2217,7 @@ const App = () => {
     document.addEventListener('touchmove', handleMove, { passive: false });
     document.addEventListener('touchend', handleEnd);
     document.addEventListener('touchcancel', handleEnd);
-    
+
     return () => {
       document.removeEventListener('mousemove', handleMove);
       document.removeEventListener('mouseup', handleEnd);
@@ -2081,18 +2230,16 @@ const App = () => {
   const resizeCursor = isResizing === 'bottom' ? 'row-resize' : isResizing ? 'col-resize' : undefined;
 
   return (
-    <div 
-      ref={containerRef} 
+    <div
+      ref={containerRef}
       className="flex h-screen w-screen bg-[#1e1e1e] text-gray-300 font-sans overflow-hidden"
       style={{ cursor: resizeCursor }}
     >
-      {isResizing && (
-        <div className="fixed inset-0 z-50 touch-none" style={{ cursor: resizeCursor }} />
-      )}
-      
+      {isResizing && <div className="fixed inset-0 z-50 touch-none" style={{ cursor: resizeCursor }} />}
+
       {isSidebarOpen && (
         <>
-          <div 
+          <div
             className="bg-[#252526] flex flex-col border-r border-[#333] flex-shrink-0"
             style={{ width: sidebarWidth }}
           >
@@ -2111,9 +2258,7 @@ const App = () => {
               <div className="px-3 py-2 border-b border-[#333]">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs text-gray-400 uppercase tracking-wide">File Sync</span>
-                  {isSyncing && (
-                    <Loader2 size={12} className="animate-spin text-blue-400" />
-                  )}
+                  {isSyncing && <Loader2 size={12} className="animate-spin text-blue-400" />}
                   {syncStatus === 'success' && !isSyncing && (
                     <span className="text-[10px] text-green-400">✓ Synced</span>
                   )}
@@ -2157,18 +2302,20 @@ const App = () => {
             <div className="h-12 flex items-center justify-between px-4 border-b border-[#333]">
               <span className="text-xs font-bold tracking-wider text-gray-400 uppercase">Explorer</span>
               <div className="flex space-x-2">
-                 <button 
+                <button
                   onClick={() => handleStartCreating('root', 'folder')}
-                  className="hover:text-white text-gray-500" title="New Root Folder"
+                  className="hover:text-white text-gray-500"
+                  title="New Root Folder"
                 >
-                   <FolderPlus size={16}/>
-                 </button>
-                 <button 
+                  <FolderPlus size={16} />
+                </button>
+                <button
                   onClick={() => handleStartCreating('root', 'file')}
-                  className="hover:text-white text-gray-500" title="New Root File"
+                  className="hover:text-white text-gray-500"
+                  title="New Root File"
                 >
-                   <FilePlus size={16}/>
-                 </button>
+                  <FilePlus size={16} />
+                </button>
               </div>
             </div>
 
@@ -2186,15 +2333,16 @@ const App = () => {
               />
             </div>
           </div>
-          
+
           <div
             onMouseDown={startResize('sidebar')}
             onTouchStart={startResize('sidebar')}
             className={`w-3 cursor-col-resize flex-shrink-0 flex items-center justify-center group touch-none
               ${isResizing === 'sidebar' ? 'bg-blue-500' : 'bg-[#333] hover:bg-blue-500/50 active:bg-blue-500/50'}`}
           >
-            <div className={`w-0.5 h-16 rounded-full transition-colors
-              ${isResizing === 'sidebar' ? 'bg-white' : 'bg-transparent group-hover:bg-blue-400'}`} 
+            <div
+              className={`w-0.5 h-16 rounded-full transition-colors
+              ${isResizing === 'sidebar' ? 'bg-white' : 'bg-transparent group-hover:bg-blue-400'}`}
             />
           </div>
         </>
@@ -2203,86 +2351,82 @@ const App = () => {
       <div className="flex-1 flex flex-col relative min-w-0">
         <div className="h-12 bg-[#2d2d2d] flex items-center justify-between px-4 border-b border-[#1e1e1e] flex-shrink-0">
           <div className="flex items-center min-w-0 flex-1">
-            <button 
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="mr-4 text-gray-400 hover:text-white"
-            >
+            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="mr-4 text-gray-400 hover:text-white">
               <Menu size={20} />
             </button>
-            
+
             <div className="flex space-x-1 overflow-x-auto no-scrollbar mask-gradient flex-1">
-              {openFiles.map(fileId => {
-                  const file = files.find(f => f.id === fileId);
-                  if (!file) return null;
-                  const isActive = fileId === activeFileId;
-                  return (
+              {openFiles.map((fileId) => {
+                const file = files.find((f) => f.id === fileId);
+
+                if (!file) {
+                  return null;
+                }
+
+                const isActive = fileId === activeFileId;
+
+                return (
                   <div
-                      key={file.id}
-                      onClick={() => setActiveFileId(file.id)}
-                      className={`
+                    key={file.id}
+                    onClick={() => setActiveFileId(file.id)}
+                    className={`
                       flex items-center px-3 py-1.5 rounded-t-md text-xs cursor-pointer select-none min-w-[100px] max-w-[200px] flex-shrink-0
                       ${isActive ? 'bg-[#1e1e1e] text-blue-400 font-medium' : 'bg-[#2d2d2d] text-gray-500 hover:bg-[#333] hover:text-gray-300'}
                       `}
                   >
-                      <span className="truncate mr-2 flex-1">{file.name}</span>
-                      <button
-                      onClick={(e) => closeFile(file.id, e)}
-                      className="hover:bg-gray-700 rounded-full p-0.5"
-                      >
+                    <span className="truncate mr-2 flex-1">{file.name}</span>
+                    <button onClick={(e) => closeFile(file.id, e)} className="hover:bg-gray-700 rounded-full p-0.5">
                       <X size={12} />
-                      </button>
+                    </button>
                   </div>
-                  );
+                );
               })}
             </div>
           </div>
 
           <div className="flex items-center space-x-2 ml-4">
-             {isSyncing && (
-               <span className="text-[10px] text-yellow-400 animate-pulse flex items-center">
-                 <Loader2 size={10} className="animate-spin mr-1" />
-                 Syncing...
-               </span>
-             )}
-             
-             <button 
-                onClick={() => setIsBottomPanelOpen(!isBottomPanelOpen)}
-                className={`p-1.5 rounded ${isBottomPanelOpen ? 'bg-[#444] text-green-400' : 'text-gray-500 hover:text-white'}`}
-                title="Toggle Terminal"
-             >
-                <TerminalSquare size={16} />
-             </button>
+            {isSyncing && (
+              <span className="text-[10px] text-yellow-400 animate-pulse flex items-center">
+                <Loader2 size={10} className="animate-spin mr-1" />
+                Syncing...
+              </span>
+            )}
 
-             <button 
-                onClick={() => {
-                  setRightPanelTab('preview');
-                  setIsRightPanelOpen(!isRightPanelOpen || rightPanelTab !== 'preview');
-                }}
-                className={`p-1.5 rounded ${isRightPanelOpen && rightPanelTab === 'preview' ? 'bg-[#444] text-blue-400' : 'text-gray-500 hover:text-white'}`}
-                title="Toggle Preview"
-             >
-                <Globe size={16} />
-             </button>
-             
-             <button 
-                onClick={() => setIsRightPanelOpen(!isRightPanelOpen)}
-                className="p-1.5 text-gray-500 hover:text-white"
-                title={isRightPanelOpen ? 'Close Panel' : 'Open Panel'}
-             >
-                {isRightPanelOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
-             </button>
+            <button
+              onClick={() => setIsBottomPanelOpen(!isBottomPanelOpen)}
+              className={`p-1.5 rounded ${isBottomPanelOpen ? 'bg-[#444] text-green-400' : 'text-gray-500 hover:text-white'}`}
+              title="Toggle Terminal"
+            >
+              <TerminalSquare size={16} />
+            </button>
+
+            <button
+              onClick={() => {
+                setRightPanelTab('preview');
+                setIsRightPanelOpen(!isRightPanelOpen || rightPanelTab !== 'preview');
+              }}
+              className={`p-1.5 rounded ${isRightPanelOpen && rightPanelTab === 'preview' ? 'bg-[#444] text-blue-400' : 'text-gray-500 hover:text-white'}`}
+              title="Toggle Preview"
+            >
+              <Globe size={16} />
+            </button>
+
+            <button
+              onClick={() => setIsRightPanelOpen(!isRightPanelOpen)}
+              className="p-1.5 text-gray-500 hover:text-white"
+              title={isRightPanelOpen ? 'Close Panel' : 'Open Panel'}
+            >
+              {isRightPanelOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
+            </button>
           </div>
         </div>
 
         <div className="flex-1 flex overflow-hidden">
           <div ref={editorAreaRef} className="flex-1 flex flex-col min-w-0">
             <div className="flex-1 overflow-hidden" style={{ minHeight: isBottomPanelOpen ? '100px' : '100%' }}>
-              <CodeEditor 
-                  file={activeFile} 
-                  onChange={updateFileContent}
-              />
+              <CodeEditor file={activeFile} onChange={updateFileContent} />
             </div>
-            
+
             {isBottomPanelOpen && (
               <>
                 <div
@@ -2291,8 +2435,9 @@ const App = () => {
                   className={`h-3 cursor-row-resize flex-shrink-0 flex items-center justify-center group touch-none
                     ${isResizing === 'bottom' ? 'bg-blue-500' : 'bg-[#333] hover:bg-blue-500/50 active:bg-blue-500/50'}`}
                 >
-                  <div className={`h-0.5 w-16 rounded-full transition-colors
-                    ${isResizing === 'bottom' ? 'bg-white' : 'bg-transparent group-hover:bg-blue-400'}`} 
+                  <div
+                    className={`h-0.5 w-16 rounded-full transition-colors
+                    ${isResizing === 'bottom' ? 'bg-white' : 'bg-transparent group-hover:bg-blue-400'}`}
                   />
                 </div>
                 <div className="flex-shrink-0 overflow-hidden" style={{ height: bottomPanelHeight }}>
@@ -2308,7 +2453,7 @@ const App = () => {
               </>
             )}
           </div>
-            
+
           {isRightPanelOpen && (
             <>
               <div
@@ -2317,15 +2462,13 @@ const App = () => {
                 className={`w-3 cursor-col-resize flex-shrink-0 flex items-center justify-center group touch-none
                   ${isResizing === 'right' ? 'bg-blue-500' : 'bg-[#333] hover:bg-blue-500/50 active:bg-blue-500/50'}`}
               >
-                <div className={`w-0.5 h-16 rounded-full transition-colors
-                  ${isResizing === 'right' ? 'bg-white' : 'bg-transparent group-hover:bg-blue-400'}`} 
+                <div
+                  className={`w-0.5 h-16 rounded-full transition-colors
+                  ${isResizing === 'right' ? 'bg-white' : 'bg-transparent group-hover:bg-blue-400'}`}
                 />
               </div>
-              
-              <div 
-                className="flex-shrink-0 flex flex-col"
-                style={{ width: rightPanelWidth }}
-              >
+
+              <div className="flex-shrink-0 flex flex-col" style={{ width: rightPanelWidth }}>
                 <div className="h-9 bg-[#2d2d2d] border-b border-[#333] flex items-center px-2 flex-shrink-0">
                   <button
                     onClick={() => setRightPanelTab('preview')}
@@ -2341,12 +2484,9 @@ const App = () => {
                     <X size={14} />
                   </button>
                 </div>
-                
+
                 <div className="flex-1 overflow-hidden">
-                  <PreviewPanel
-                    sandboxId={sandboxId}
-                    isConnected={isConnected}
-                  />
+                  <PreviewPanel sandboxId={sandboxId} isConnected={isConnected} />
                 </div>
               </div>
             </>
@@ -2355,26 +2495,24 @@ const App = () => {
 
         <div className="h-6 bg-[#007acc] text-white text-[10px] flex items-center px-3 justify-between select-none flex-shrink-0">
           <div className="flex items-center space-x-4">
-             <span>main*</span>
-             {isConnected && (
-               <span className="flex items-center">
-                 <span className="w-2 h-2 rounded-full bg-green-400 mr-1.5 animate-pulse"></span>
-                 E2B Connected
-               </span>
-             )}
-             {isSyncing && (
-               <span className="flex items-center text-yellow-300">
-                 <RefreshCw size={10} className="animate-spin mr-1" />
-                 Syncing...
-               </span>
-             )}
+            <span>main*</span>
+            {isConnected && (
+              <span className="flex items-center">
+                <span className="w-2 h-2 rounded-full bg-green-400 mr-1.5 animate-pulse"></span>
+                E2B Connected
+              </span>
+            )}
+            {isSyncing && (
+              <span className="flex items-center text-yellow-300">
+                <RefreshCw size={10} className="animate-spin mr-1" />
+                Syncing...
+              </span>
+            )}
           </div>
           <div className="flex items-center space-x-4">
             <span>{activeFile ? 'TypeScript React' : 'Plain Text'}</span>
             <span>UTF-8</span>
-            {sandboxId && (
-              <span className="opacity-70">Sandbox: {sandboxId.substring(0, 8)}...</span>
-            )}
+            {sandboxId && <span className="opacity-70">Sandbox: {sandboxId.substring(0, 8)}...</span>}
           </div>
         </div>
       </div>
@@ -2382,9 +2520,11 @@ const App = () => {
   );
 };
 
-// ============================================================================
-// INTEGRATION WITH BOLT.NEW STORE
-// ============================================================================
+/*
+ * ============================================================================
+ * INTEGRATION WITH BOLT.NEW STORE
+ * ============================================================================
+ */
 
 import { e2bStore, e2bState, e2bApiKey } from '~/lib/stores/e2b';
 
@@ -2452,13 +2592,13 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
   const [rightPanelWidth, setRightPanelWidth] = useState(450);
   const [bottomPanelHeight, setBottomPanelHeight] = useState(256);
   const [isResizing, setIsResizing] = useState<'sidebar' | 'right' | 'bottom' | null>(null);
-  
+
   const [activeTerminalIdState, setActiveTerminalIdState] = useState<string | null>(null);
   const [autoSandboxCreated, setAutoSandboxCreated] = useState(false);
-  
+
   const containerRef = useRef<HTMLDivElement>(null);
   const editorAreaRef = useRef<HTMLDivElement>(null);
-  
+
   const activeFile = getActiveFile();
   const isSyncing = isLocalSyncing || isSandboxSyncing;
 
@@ -2466,6 +2606,7 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
   useEffect(() => {
     if (!internalApiKey) {
       const storedKey = e2bStore.loadApiKey();
+
       if (storedKey) {
         setInternalApiKey(storedKey);
       }
@@ -2516,7 +2657,16 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
         deleteFile,
       });
     }
-  }, [isConnected, writeFile, makeDirectory, deleteFile, sendTerminalInput, createSandbox, activeTerminalIdState, runCommand]);
+  }, [
+    isConnected,
+    writeFile,
+    makeDirectory,
+    deleteFile,
+    sendTerminalInput,
+    createSandbox,
+    activeTerminalIdState,
+    runCommand,
+  ]);
 
   // Subscribe to store API key changes
   useEffect(() => {
@@ -2530,14 +2680,17 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
 
   // Auto-create sandbox when API key is set and chat starts
   useEffect(() => {
-    // Use the internal API key state directly instead of reading from store
-    // This ensures we react to API key changes properly
+    /*
+     * Use the internal API key state directly instead of reading from store
+     * This ensures we react to API key changes properly
+     */
     const hasApiKey = internalApiKey && internalApiKey.trim().length > 0;
-    
+
     if (chatStarted && hasApiKey && !isConnected && !isConnecting && !autoSandboxCreated) {
       console.log('[E2B] Auto-creating sandbox - chatStarted:', chatStarted, 'hasApiKey:', hasApiKey);
       setAutoSandboxCreated(true);
       e2bStore.setAutoCreateTriggered(true);
+
       // Set connecting state in store IMMEDIATELY so file operations get queued
       e2bStore.setConnecting(true);
       createSandbox();
@@ -2557,10 +2710,13 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
   }, [isConnected, isConnecting, autoSandboxCreated]);
 
   useEffect(() => {
-    if (!isConnected) return;
+    if (!isConnected) {
+      return;
+    }
 
     const unsubscribe = onFileChange((event) => {
       console.log('File change event:', event);
+
       if (event.type === 'created' || event.type === 'modified') {
         setSyncStatus('idle');
       }
@@ -2571,28 +2727,38 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
     };
   }, [isConnected, onFileChange]);
 
-  const handleApiKeyChange = useCallback((key: string) => {
-    setInternalApiKey(key);
-    e2bStore.setApiKey(key);
-  }, [setInternalApiKey]);
+  const handleApiKeyChange = useCallback(
+    (key: string) => {
+      setInternalApiKey(key);
+      e2bStore.setApiKey(key);
+    },
+    [setInternalApiKey],
+  );
 
   const handleCreateSandbox = useCallback(async () => {
     // Set connecting state in store IMMEDIATELY so file operations get queued
     e2bStore.setConnecting(true);
+
     const sandbox = await createSandbox();
+
     if (sandbox) {
       setAutoSandboxCreated(true);
     }
+
     return sandbox;
   }, [createSandbox]);
 
   const handleInitialSync = useCallback(async () => {
-    if (!isConnected) return;
-    
+    if (!isConnected) {
+      return;
+    }
+
     setSyncStatus('syncing');
+
     const allFiles = getAllFiles();
     const success = await syncLocalToSandbox(allFiles);
     setSyncStatus(success ? 'success' : 'error');
+
     if (success) {
       setLastSyncTime(new Date());
     }
@@ -2600,9 +2766,11 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
 
   const handlePushToSandbox = useCallback(async () => {
     setSyncStatus('syncing');
+
     const allFiles = getAllFiles();
     const success = await syncLocalToSandbox(allFiles);
     setSyncStatus(success ? 'success' : 'error');
+
     if (success) {
       setLastSyncTime(new Date());
     }
@@ -2610,7 +2778,9 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
 
   const handlePullFromSandbox = useCallback(async () => {
     setSyncStatus('syncing');
+
     const sandboxFiles = await syncSandboxToLocal();
+
     if (sandboxFiles.length > 0) {
       replaceWithSandboxFiles(sandboxFiles);
       setSyncStatus('success');
@@ -2626,6 +2796,7 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
 
   const handleStartCreating = (parentId: string, type: 'file' | 'folder') => {
     setCreationState({ parentId, type });
+
     if (parentId !== 'root') {
       expandFolder(parentId);
     }
@@ -2640,27 +2811,36 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
     setCreationState(null);
   };
 
-  const startResize = useCallback((panel: 'sidebar' | 'right' | 'bottom') => (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    setIsResizing(panel);
-  }, []);
+  const startResize = useCallback(
+    (panel: 'sidebar' | 'right' | 'bottom') => (e: React.MouseEvent | React.TouchEvent) => {
+      e.preventDefault();
+      setIsResizing(panel);
+    },
+    [],
+  );
 
   useEffect(() => {
-    if (!isResizing) return;
+    if (!isResizing) {
+      return;
+    }
 
     const getClientCoords = (e: MouseEvent | TouchEvent): { clientX: number; clientY: number } => {
       if ('touches' in e && e.touches.length > 0) {
         return { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY };
       }
+
       if ('changedTouches' in e && e.changedTouches.length > 0) {
         return { clientX: e.changedTouches[0].clientX, clientY: e.changedTouches[0].clientY };
       }
+
       return { clientX: (e as MouseEvent).clientX, clientY: (e as MouseEvent).clientY };
     };
 
     const handleMove = (e: MouseEvent | TouchEvent) => {
-      if (!containerRef.current) return;
-      
+      if (!containerRef.current) {
+        return;
+      }
+
       if ('touches' in e) {
         e.preventDefault();
       }
@@ -2690,7 +2870,7 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
     document.addEventListener('touchmove', handleMove, { passive: false });
     document.addEventListener('touchend', handleEnd);
     document.addEventListener('touchcancel', handleEnd);
-    
+
     return () => {
       document.removeEventListener('mousemove', handleMove);
       document.removeEventListener('mouseup', handleEnd);
@@ -2701,84 +2881,100 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
   }, [isResizing]);
 
   // Handle terminal creation and track active terminal
-  const handleCreateTerminal = useCallback(async (
-    terminalId: string,
-    cols: number,
-    rows: number,
-    onData: (data: Uint8Array) => void
-  ) => {
-    const terminal = await createTerminal(terminalId, cols, rows, onData);
-    if (terminal) {
-      setActiveTerminalIdState(terminalId);
-      e2bStore.setActiveTerminalId(terminalId);
-    }
-    return terminal;
-  }, [createTerminal]);
+  const handleCreateTerminal = useCallback(
+    async (terminalId: string, cols: number, rows: number, onData: (data: Uint8Array) => void) => {
+      const terminal = await createTerminal(terminalId, cols, rows, onData);
+
+      if (terminal) {
+        setActiveTerminalIdState(terminalId);
+        e2bStore.setActiveTerminalId(terminalId);
+      }
+
+      return terminal;
+    },
+    [createTerminal],
+  );
 
   // Expose file write function for LLM actions
-  const writeFileFromLLM = useCallback(async (filePath: string, content: string) => {
-    // Ensure path starts with /home/user/
-    const normalizedPath = filePath.startsWith('/home/user/') 
-      ? filePath 
-      : `/home/user/${filePath.replace(/^\//, '')}`;
-    
-    // Create parent directories if needed
-    const pathParts = normalizedPath.split('/').filter(Boolean);
-    let currentPath = '';
-    for (let i = 0; i < pathParts.length - 1; i++) {
-      currentPath += '/' + pathParts[i];
-      if (currentPath.startsWith('/home/user')) {
-        await makeDirectory(currentPath);
-      }
-    }
-    
-    // Write the file
-    const success = await writeFile(normalizedPath, content);
-    
-    if (success) {
-      // Also update local file system state
-      const fileName = pathParts[pathParts.length - 1];
-      const relativePath = normalizedPath.replace('/home/user/', '');
-      const parts = relativePath.split('/');
-      
-      // Find or create parent folders in local state
-      let parentId = 'root';
-      for (let i = 0; i < parts.length - 1; i++) {
-        const folderName = parts[i];
-        const existingFolder = files.find(f => f.parentId === parentId && f.name === folderName && f.type === 'folder');
-        if (existingFolder) {
-          parentId = existingFolder.id;
-        } else {
-          const newFolderId = `llm-${Date.now()}-${i}`;
-          setFiles(prev => [...prev, {
-            id: newFolderId,
-            parentId,
-            name: folderName,
-            type: 'folder',
-            isOpen: true,
-          }]);
-          parentId = newFolderId;
+  const writeFileFromLLM = useCallback(
+    async (filePath: string, content: string) => {
+      // Ensure path starts with /home/user/
+      const normalizedPath = filePath.startsWith('/home/user/')
+        ? filePath
+        : `/home/user/${filePath.replace(/^\//, '')}`;
+
+      // Create parent directories if needed
+      const pathParts = normalizedPath.split('/').filter(Boolean);
+      let currentPath = '';
+
+      for (let i = 0; i < pathParts.length - 1; i++) {
+        currentPath += '/' + pathParts[i];
+
+        if (currentPath.startsWith('/home/user')) {
+          await makeDirectory(currentPath);
         }
       }
-      
-      // Create or update the file
-      const existingFile = files.find(f => f.parentId === parentId && f.name === fileName);
-      if (existingFile) {
-        updateFileContent(existingFile.id, content);
-      } else {
-        const newFileId = `llm-${Date.now()}-file`;
-        setFiles(prev => [...prev, {
-          id: newFileId,
-          parentId,
-          name: fileName,
-          type: 'file',
-          content,
-        }]);
+
+      // Write the file
+      const success = await writeFile(normalizedPath, content);
+
+      if (success) {
+        // Also update local file system state
+        const fileName = pathParts[pathParts.length - 1];
+        const relativePath = normalizedPath.replace('/home/user/', '');
+        const parts = relativePath.split('/');
+
+        // Find or create parent folders in local state
+        let parentId = 'root';
+
+        for (let i = 0; i < parts.length - 1; i++) {
+          const folderName = parts[i];
+          const existingFolder = files.find(
+            (f) => f.parentId === parentId && f.name === folderName && f.type === 'folder',
+          );
+
+          if (existingFolder) {
+            parentId = existingFolder.id;
+          } else {
+            const newFolderId = `llm-${Date.now()}-${i}`;
+            setFiles((prev) => [
+              ...prev,
+              {
+                id: newFolderId,
+                parentId,
+                name: folderName,
+                type: 'folder',
+                isOpen: true,
+              },
+            ]);
+            parentId = newFolderId;
+          }
+        }
+
+        // Create or update the file
+        const existingFile = files.find((f) => f.parentId === parentId && f.name === fileName);
+
+        if (existingFile) {
+          updateFileContent(existingFile.id, content);
+        } else {
+          const newFileId = `llm-${Date.now()}-file`;
+          setFiles((prev) => [
+            ...prev,
+            {
+              id: newFileId,
+              parentId,
+              name: fileName,
+              type: 'file',
+              content,
+            },
+          ]);
+        }
       }
-    }
-    
-    return success;
-  }, [files, writeFile, makeDirectory, setFiles, updateFileContent]);
+
+      return success;
+    },
+    [files, writeFile, makeDirectory, setFiles, updateFileContent],
+  );
 
   // Make writeFileFromLLM available globally through store
   useEffect(() => {
@@ -2806,18 +3002,16 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
   }
 
   return (
-    <div 
-      ref={containerRef} 
+    <div
+      ref={containerRef}
       className="flex h-full w-full bg-[#1e1e1e] text-gray-300 font-sans overflow-hidden"
       style={{ cursor: resizeCursor }}
     >
-      {isResizing && (
-        <div className="fixed inset-0 z-50 touch-none" style={{ cursor: resizeCursor }} />
-      )}
-      
+      {isResizing && <div className="fixed inset-0 z-50 touch-none" style={{ cursor: resizeCursor }} />}
+
       {isSidebarOpen && (
         <>
-          <div 
+          <div
             className="bg-[#252526] flex flex-col border-r border-[#333] flex-shrink-0"
             style={{ width: sidebarWidth }}
           >
@@ -2836,9 +3030,7 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
               <div className="px-3 py-2 border-b border-[#333]">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs text-gray-400 uppercase tracking-wide">File Sync</span>
-                  {isSyncing && (
-                    <Loader2 size={12} className="animate-spin text-blue-400" />
-                  )}
+                  {isSyncing && <Loader2 size={12} className="animate-spin text-blue-400" />}
                   {syncStatus === 'success' && !isSyncing && (
                     <span className="text-[10px] text-green-400">✓ Synced</span>
                   )}
@@ -2882,18 +3074,20 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
             <div className="h-12 flex items-center justify-between px-4 border-b border-[#333]">
               <span className="text-xs font-bold tracking-wider text-gray-400 uppercase">Explorer</span>
               <div className="flex space-x-2">
-                 <button 
+                <button
                   onClick={() => handleStartCreating('root', 'folder')}
-                  className="hover:text-white text-gray-500" title="New Root Folder"
+                  className="hover:text-white text-gray-500"
+                  title="New Root Folder"
                 >
-                   <FolderPlus size={16}/>
-                 </button>
-                 <button 
+                  <FolderPlus size={16} />
+                </button>
+                <button
                   onClick={() => handleStartCreating('root', 'file')}
-                  className="hover:text-white text-gray-500" title="New Root File"
+                  className="hover:text-white text-gray-500"
+                  title="New Root File"
                 >
-                   <FilePlus size={16}/>
-                 </button>
+                  <FilePlus size={16} />
+                </button>
               </div>
             </div>
 
@@ -2911,15 +3105,16 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
               />
             </div>
           </div>
-          
+
           <div
             onMouseDown={startResize('sidebar')}
             onTouchStart={startResize('sidebar')}
             className={`w-3 cursor-col-resize flex-shrink-0 flex items-center justify-center group touch-none
               ${isResizing === 'sidebar' ? 'bg-blue-500' : 'bg-[#333] hover:bg-blue-500/50 active:bg-blue-500/50'}`}
           >
-            <div className={`w-0.5 h-16 rounded-full transition-colors
-              ${isResizing === 'sidebar' ? 'bg-white' : 'bg-transparent group-hover:bg-blue-400'}`} 
+            <div
+              className={`w-0.5 h-16 rounded-full transition-colors
+              ${isResizing === 'sidebar' ? 'bg-white' : 'bg-transparent group-hover:bg-blue-400'}`}
             />
           </div>
         </>
@@ -2928,86 +3123,82 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
       <div className="flex-1 flex flex-col relative min-w-0">
         <div className="h-12 bg-[#2d2d2d] flex items-center justify-between px-4 border-b border-[#1e1e1e] flex-shrink-0">
           <div className="flex items-center min-w-0 flex-1">
-            <button 
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="mr-4 text-gray-400 hover:text-white"
-            >
+            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="mr-4 text-gray-400 hover:text-white">
               <Menu size={20} />
             </button>
-            
+
             <div className="flex space-x-1 overflow-x-auto no-scrollbar mask-gradient flex-1">
-              {openFiles.map(fileId => {
-                  const file = files.find(f => f.id === fileId);
-                  if (!file) return null;
-                  const isActive = fileId === activeFileId;
-                  return (
+              {openFiles.map((fileId) => {
+                const file = files.find((f) => f.id === fileId);
+
+                if (!file) {
+                  return null;
+                }
+
+                const isActive = fileId === activeFileId;
+
+                return (
                   <div
-                      key={file.id}
-                      onClick={() => setActiveFileId(file.id)}
-                      className={`
+                    key={file.id}
+                    onClick={() => setActiveFileId(file.id)}
+                    className={`
                       flex items-center px-3 py-1.5 rounded-t-md text-xs cursor-pointer select-none min-w-[100px] max-w-[200px] flex-shrink-0
                       ${isActive ? 'bg-[#1e1e1e] text-blue-400 font-medium' : 'bg-[#2d2d2d] text-gray-500 hover:bg-[#333] hover:text-gray-300'}
                       `}
                   >
-                      <span className="truncate mr-2 flex-1">{file.name}</span>
-                      <button
-                      onClick={(e) => closeFile(file.id, e)}
-                      className="hover:bg-gray-700 rounded-full p-0.5"
-                      >
+                    <span className="truncate mr-2 flex-1">{file.name}</span>
+                    <button onClick={(e) => closeFile(file.id, e)} className="hover:bg-gray-700 rounded-full p-0.5">
                       <X size={12} />
-                      </button>
+                    </button>
                   </div>
-                  );
+                );
               })}
             </div>
           </div>
 
           <div className="flex items-center space-x-2 ml-4">
-             {isSyncing && (
-               <span className="text-[10px] text-yellow-400 animate-pulse flex items-center">
-                 <Loader2 size={10} className="animate-spin mr-1" />
-                 Syncing...
-               </span>
-             )}
-             
-             <button 
-                onClick={() => setIsBottomPanelOpen(!isBottomPanelOpen)}
-                className={`p-1.5 rounded ${isBottomPanelOpen ? 'bg-[#444] text-green-400' : 'text-gray-500 hover:text-white'}`}
-                title="Toggle Terminal"
-             >
-                <TerminalSquare size={16} />
-             </button>
+            {isSyncing && (
+              <span className="text-[10px] text-yellow-400 animate-pulse flex items-center">
+                <Loader2 size={10} className="animate-spin mr-1" />
+                Syncing...
+              </span>
+            )}
 
-             <button 
-                onClick={() => {
-                  setRightPanelTab('preview');
-                  setIsRightPanelOpen(!isRightPanelOpen || rightPanelTab !== 'preview');
-                }}
-                className={`p-1.5 rounded ${isRightPanelOpen && rightPanelTab === 'preview' ? 'bg-[#444] text-blue-400' : 'text-gray-500 hover:text-white'}`}
-                title="Toggle Preview"
-             >
-                <Globe size={16} />
-             </button>
-             
-             <button 
-                onClick={() => setIsRightPanelOpen(!isRightPanelOpen)}
-                className="p-1.5 text-gray-500 hover:text-white"
-                title={isRightPanelOpen ? 'Close Panel' : 'Open Panel'}
-             >
-                {isRightPanelOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
-             </button>
+            <button
+              onClick={() => setIsBottomPanelOpen(!isBottomPanelOpen)}
+              className={`p-1.5 rounded ${isBottomPanelOpen ? 'bg-[#444] text-green-400' : 'text-gray-500 hover:text-white'}`}
+              title="Toggle Terminal"
+            >
+              <TerminalSquare size={16} />
+            </button>
+
+            <button
+              onClick={() => {
+                setRightPanelTab('preview');
+                setIsRightPanelOpen(!isRightPanelOpen || rightPanelTab !== 'preview');
+              }}
+              className={`p-1.5 rounded ${isRightPanelOpen && rightPanelTab === 'preview' ? 'bg-[#444] text-blue-400' : 'text-gray-500 hover:text-white'}`}
+              title="Toggle Preview"
+            >
+              <Globe size={16} />
+            </button>
+
+            <button
+              onClick={() => setIsRightPanelOpen(!isRightPanelOpen)}
+              className="p-1.5 text-gray-500 hover:text-white"
+              title={isRightPanelOpen ? 'Close Panel' : 'Open Panel'}
+            >
+              {isRightPanelOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
+            </button>
           </div>
         </div>
 
         <div className="flex-1 flex overflow-hidden">
           <div ref={editorAreaRef} className="flex-1 flex flex-col min-w-0">
             <div className="flex-1 overflow-hidden" style={{ minHeight: isBottomPanelOpen ? '100px' : '100%' }}>
-              <CodeEditor 
-                  file={activeFile} 
-                  onChange={updateFileContent}
-              />
+              <CodeEditor file={activeFile} onChange={updateFileContent} />
             </div>
-            
+
             {isBottomPanelOpen && (
               <>
                 <div
@@ -3016,8 +3207,9 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
                   className={`h-3 cursor-row-resize flex-shrink-0 flex items-center justify-center group touch-none
                     ${isResizing === 'bottom' ? 'bg-blue-500' : 'bg-[#333] hover:bg-blue-500/50 active:bg-blue-500/50'}`}
                 >
-                  <div className={`h-0.5 w-16 rounded-full transition-colors
-                    ${isResizing === 'bottom' ? 'bg-white' : 'bg-transparent group-hover:bg-blue-400'}`} 
+                  <div
+                    className={`h-0.5 w-16 rounded-full transition-colors
+                    ${isResizing === 'bottom' ? 'bg-white' : 'bg-transparent group-hover:bg-blue-400'}`}
                   />
                 </div>
                 <div className="flex-shrink-0 overflow-hidden" style={{ height: bottomPanelHeight }}>
@@ -3033,7 +3225,7 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
               </>
             )}
           </div>
-            
+
           {isRightPanelOpen && (
             <>
               <div
@@ -3042,15 +3234,13 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
                 className={`w-3 cursor-col-resize flex-shrink-0 flex items-center justify-center group touch-none
                   ${isResizing === 'right' ? 'bg-blue-500' : 'bg-[#333] hover:bg-blue-500/50 active:bg-blue-500/50'}`}
               >
-                <div className={`w-0.5 h-16 rounded-full transition-colors
-                  ${isResizing === 'right' ? 'bg-white' : 'bg-transparent group-hover:bg-blue-400'}`} 
+                <div
+                  className={`w-0.5 h-16 rounded-full transition-colors
+                  ${isResizing === 'right' ? 'bg-white' : 'bg-transparent group-hover:bg-blue-400'}`}
                 />
               </div>
-              
-              <div 
-                className="flex-shrink-0 flex flex-col"
-                style={{ width: rightPanelWidth }}
-              >
+
+              <div className="flex-shrink-0 flex flex-col" style={{ width: rightPanelWidth }}>
                 <div className="h-9 bg-[#2d2d2d] border-b border-[#333] flex items-center px-2 flex-shrink-0">
                   <button
                     onClick={() => setRightPanelTab('preview')}
@@ -3066,12 +3256,9 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
                     <X size={14} />
                   </button>
                 </div>
-                
+
                 <div className="flex-1 overflow-hidden">
-                  <PreviewPanel
-                    sandboxId={sandboxId}
-                    isConnected={isConnected}
-                  />
+                  <PreviewPanel sandboxId={sandboxId} isConnected={isConnected} />
                 </div>
               </div>
             </>
@@ -3080,26 +3267,24 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
 
         <div className="h-6 bg-[#007acc] text-white text-[10px] flex items-center px-3 justify-between select-none flex-shrink-0">
           <div className="flex items-center space-x-4">
-             <span>main*</span>
-             {isConnected && (
-               <span className="flex items-center">
-                 <span className="w-2 h-2 rounded-full bg-green-400 mr-1.5 animate-pulse"></span>
-                 E2B Connected
-               </span>
-             )}
-             {isSyncing && (
-               <span className="flex items-center text-yellow-300">
-                 <RefreshCw size={10} className="animate-spin mr-1" />
-                 Syncing...
-               </span>
-             )}
+            <span>main*</span>
+            {isConnected && (
+              <span className="flex items-center">
+                <span className="w-2 h-2 rounded-full bg-green-400 mr-1.5 animate-pulse"></span>
+                E2B Connected
+              </span>
+            )}
+            {isSyncing && (
+              <span className="flex items-center text-yellow-300">
+                <RefreshCw size={10} className="animate-spin mr-1" />
+                Syncing...
+              </span>
+            )}
           </div>
           <div className="flex items-center space-x-4">
             <span>{activeFile ? 'TypeScript React' : 'Plain Text'}</span>
             <span>UTF-8</span>
-            {sandboxId && (
-              <span className="opacity-70">Sandbox: {sandboxId.substring(0, 8)}...</span>
-            )}
+            {sandboxId && <span className="opacity-70">Sandbox: {sandboxId.substring(0, 8)}...</span>}
           </div>
         </div>
       </div>
