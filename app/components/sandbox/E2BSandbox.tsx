@@ -1702,14 +1702,11 @@ const SandboxControls: React.FC<SandboxControlsProps> = ({
                 )}
               </button>
             ) : (
-              <button
-                onClick={onDisconnect}
-                className="flex-1 flex items-center justify-center space-x-2 bg-red-600 hover:bg-red-700 
-                  text-white rounded py-2 px-4 text-sm font-medium transition-colors"
-              >
-                <Square size={14} />
-                <span>Stop Sandbox</span>
-              </button>
+              <div className="flex-1 flex items-center justify-center space-x-2 bg-green-600/20 border border-green-600/50
+                text-green-400 rounded py-2 px-4 text-sm font-medium">
+                <CheckCircle size={14} />
+                <span>Sandbox Running</span>
+              </div>
             )}
           </div>
 
