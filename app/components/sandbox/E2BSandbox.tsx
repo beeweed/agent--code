@@ -132,6 +132,49 @@ const deviceSizes: Record<DeviceMode, { width: string; label: string }> = {
   mobile: { width: '375px', label: 'Mobile' },
 };
 
+// system files and directories to exclude from file sync
+const EXCLUDED_SYSTEM_FILES = new Set([
+  '.bashrc',
+  '.bash_history',
+  '.bash_logout',
+  '.profile',
+  '.bash_profile',
+  '.zshrc',
+  '.zsh_history',
+  '.vimrc',
+  '.gitconfig',
+  '.ssh',
+  '.gnupg',
+  '.wget-hsts',
+  '.lesshst',
+  '.python_history',
+  '.node_repl_history',
+]);
+
+const EXCLUDED_SYSTEM_DIRECTORIES = new Set([
+  '.cache',
+  '.local',
+  '.config',
+  '.npm',
+  '.yarn',
+  '.pnpm',
+  '.bun',
+  '.nvm',
+  '.pyenv',
+  '.cargo',
+  '.rustup',
+  'node_modules',
+  '.vscode-server',
+  '.cursor-server',
+]);
+
+const isSystemFileOrDirectory = (name: string, isDirectory: boolean): boolean => {
+  if (isDirectory) {
+    return EXCLUDED_SYSTEM_DIRECTORIES.has(name);
+  }
+  return EXCLUDED_SYSTEM_FILES.has(name);
+};
+
 /*
  * ============================================================================
  * HELPER FUNCTIONS
@@ -537,6 +580,11 @@ const useE2BSandbox = () => {
         for (const file of files) {
           const fullPath = path === '/' ? `/${file.name}` : `${path}/${file.name}`;
           const isDirectory = file.type === 'dir';
+
+          // skip system files and directories
+          if (isSystemFileOrDirectory(file.name, isDirectory)) {
+            continue;
+          }
 
           if (isDirectory) {
             result.push({ path: fullPath, isDir: true });
