@@ -1,15 +1,18 @@
 import type { Message } from 'ai';
-import React, { type RefCallback } from 'react';
+import React, { type RefCallback, useState } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { Menu } from '~/components/sidebar/Menu.client';
 import { IconButton } from '~/components/ui/IconButton';
 import { Workbench } from '~/components/workbench/Workbench.client';
+import { PreviewTab } from '~/components/workbench/PreviewTab';
 import { classNames } from '~/utils/classNames';
 import { Messages } from './Messages.client';
 import { SendButton } from './SendButton.client';
 
 import styles from './BaseChat.module.scss';
+
+type WorkbenchTab = 'code' | 'preview';
 
 interface BaseChatProps {
   textareaRef?: React.RefObject<HTMLTextAreaElement> | undefined;
@@ -59,6 +62,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     ref,
   ) => {
     const TEXTAREA_MAX_HEIGHT = chatStarted ? 400 : 200;
+    const [activeTab, setActiveTab] = useState<WorkbenchTab>('code');
 
     const chatPanel = (
       <div className={classNames(styles.Chat, 'flex flex-col flex-grow h-full')}>
@@ -217,8 +221,52 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
               <PanelResizeHandle className="w-1.5 bg-bolt-elements-borderColor hover:bg-bolt-elements-borderColorActive active:bg-bolt-elements-borderColorActive transition-colors cursor-col-resize group flex items-center justify-center">
                 <div className="w-0.5 h-8 rounded-full bg-bolt-elements-textTertiary opacity-0 group-hover:opacity-100 transition-opacity" />
               </PanelResizeHandle>
-              <Panel defaultSize={60} minSize={30} className="h-full">
-                <ClientOnly>{() => <Workbench chatStarted={chatStarted} isStreaming={isStreaming} />}</ClientOnly>
+              <Panel defaultSize={60} minSize={30} className="h-full flex flex-col">
+                {/* Tab Bar */}
+                <div className="h-11 bg-bolt-elements-background-depth-2 border-b border-bolt-elements-borderColor flex items-center px-2 flex-shrink-0">
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setActiveTab('code')}
+                      className={classNames(
+                        'flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200',
+                        activeTab === 'code'
+                          ? 'bg-bolt-elements-background-depth-1 text-bolt-elements-textPrimary shadow-sm'
+                          : 'text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary hover:bg-bolt-elements-background-depth-1/50',
+                      )}
+                    >
+                      <div className="i-ph:code text-lg" />
+                      <span>Code</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('preview')}
+                      className={classNames(
+                        'flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200',
+                        activeTab === 'preview'
+                          ? 'bg-bolt-elements-background-depth-1 text-bolt-elements-textPrimary shadow-sm'
+                          : 'text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary hover:bg-bolt-elements-background-depth-1/50',
+                      )}
+                    >
+                      <div className="i-ph:globe text-lg" />
+                      <span>Preview</span>
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Tab Content */}
+                <div className="flex-1 overflow-hidden">
+                  <ClientOnly>
+                    {() => (
+                      <>
+                        <div className={classNames('h-full w-full', activeTab === 'code' ? 'block' : 'hidden')}>
+                          <Workbench chatStarted={chatStarted} isStreaming={isStreaming} />
+                        </div>
+                        <div className={classNames('h-full w-full', activeTab === 'preview' ? 'block' : 'hidden')}>
+                          <PreviewTab chatStarted={chatStarted} />
+                        </div>
+                      </>
+                    )}
+                  </ClientOnly>
+                </div>
               </Panel>
             </>
           )}

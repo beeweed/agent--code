@@ -2094,17 +2094,14 @@ const App = () => {
   } = useE2BSandbox();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
-  const [rightPanelTab, setRightPanelTab] = useState<RightPanelTab>('preview');
   const [isBottomPanelOpen, setIsBottomPanelOpen] = useState(true);
   const [creationState, setCreationState] = useState<{ parentId: string; type: 'file' | 'folder' } | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
 
   const [sidebarWidth, setSidebarWidth] = useState(256);
-  const [rightPanelWidth, setRightPanelWidth] = useState(450);
   const [bottomPanelHeight, setBottomPanelHeight] = useState(256);
-  const [isResizing, setIsResizing] = useState<'sidebar' | 'right' | 'bottom' | null>(null);
+  const [isResizing, setIsResizing] = useState<'sidebar' | 'bottom' | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const editorAreaRef = useRef<HTMLDivElement>(null);
@@ -2204,7 +2201,7 @@ const App = () => {
   };
 
   const startResize = useCallback(
-    (panel: 'sidebar' | 'right' | 'bottom') => (e: React.MouseEvent | React.TouchEvent) => {
+    (panel: 'sidebar' | 'bottom') => (e: React.MouseEvent | React.TouchEvent) => {
       e.preventDefault();
       setIsResizing(panel);
     },
@@ -2243,9 +2240,6 @@ const App = () => {
       if (isResizing === 'sidebar') {
         const newWidth = clientX - containerRect.left;
         setSidebarWidth(Math.max(180, Math.min(500, newWidth)));
-      } else if (isResizing === 'right') {
-        const newWidth = containerRect.right - clientX;
-        setRightPanelWidth(Math.max(250, Math.min(800, newWidth)));
       } else if (isResizing === 'bottom' && editorAreaRef.current) {
         const editorRect = editorAreaRef.current.getBoundingClientRect();
         const newHeight = editorRect.bottom - clientY;
@@ -2272,7 +2266,7 @@ const App = () => {
     };
   }, [isResizing]);
 
-  const resizeCursor = isResizing === 'bottom' ? 'row-resize' : isResizing ? 'col-resize' : undefined;
+  const resizeCursor = isResizing === 'bottom' ? 'row-resize' : isResizing === 'sidebar' ? 'col-resize' : undefined;
 
   return (
     <div
@@ -2444,25 +2438,6 @@ const App = () => {
             >
               <TerminalSquare size={16} />
             </button>
-
-            <button
-              onClick={() => {
-                setRightPanelTab('preview');
-                setIsRightPanelOpen(!isRightPanelOpen || rightPanelTab !== 'preview');
-              }}
-              className={`p-1.5 rounded ${isRightPanelOpen && rightPanelTab === 'preview' ? 'bg-[#444] text-blue-400' : 'text-gray-500 hover:text-white'}`}
-              title="Toggle Preview"
-            >
-              <Globe size={16} />
-            </button>
-
-            <button
-              onClick={() => setIsRightPanelOpen(!isRightPanelOpen)}
-              className="p-1.5 text-gray-500 hover:text-white"
-              title={isRightPanelOpen ? 'Close Panel' : 'Open Panel'}
-            >
-              {isRightPanelOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
-            </button>
           </div>
         </div>
 
@@ -2499,43 +2474,7 @@ const App = () => {
             )}
           </div>
 
-          {isRightPanelOpen && (
-            <>
-              <div
-                onMouseDown={startResize('right')}
-                onTouchStart={startResize('right')}
-                className={`w-3 cursor-col-resize flex-shrink-0 flex items-center justify-center group touch-none
-                  ${isResizing === 'right' ? 'bg-blue-500' : 'bg-[#333] hover:bg-blue-500/50 active:bg-blue-500/50'}`}
-              >
-                <div
-                  className={`w-0.5 h-16 rounded-full transition-colors
-                  ${isResizing === 'right' ? 'bg-white' : 'bg-transparent group-hover:bg-blue-400'}`}
-                />
-              </div>
-
-              <div className="flex-shrink-0 flex flex-col" style={{ width: rightPanelWidth }}>
-                <div className="h-9 bg-[#2d2d2d] border-b border-[#333] flex items-center px-2 flex-shrink-0">
-                  <button
-                    onClick={() => setRightPanelTab('preview')}
-                    className={`px-3 py-1 text-xs rounded ${rightPanelTab === 'preview' ? 'bg-[#1e1e1e] text-blue-400' : 'text-gray-500 hover:text-white'}`}
-                  >
-                    <Globe size={12} className="inline mr-1" />
-                    Preview
-                  </button>
-                  <button
-                    onClick={() => setIsRightPanelOpen(false)}
-                    className="ml-auto p-1 text-gray-500 hover:text-white"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-
-                <div className="flex-1 overflow-hidden">
-                  <PreviewPanel sandboxId={sandboxId} isConnected={isConnected} />
-                </div>
-              </div>
-            </>
-          )}
+          
         </div>
 
         <div className="h-6 bg-[#007acc] text-white text-[10px] flex items-center px-3 justify-between select-none flex-shrink-0">
@@ -2626,17 +2565,14 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
   } = useE2BSandbox();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
-  const [rightPanelTab, setRightPanelTab] = useState<RightPanelTab>('preview');
   const [isBottomPanelOpen, setIsBottomPanelOpen] = useState(true);
   const [creationState, setCreationState] = useState<{ parentId: string; type: 'file' | 'folder' } | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
 
   const [sidebarWidth, setSidebarWidth] = useState(256);
-  const [rightPanelWidth, setRightPanelWidth] = useState(450);
   const [bottomPanelHeight, setBottomPanelHeight] = useState(256);
-  const [isResizing, setIsResizing] = useState<'sidebar' | 'right' | 'bottom' | null>(null);
+  const [isResizing, setIsResizing] = useState<'sidebar' | 'bottom' | null>(null);
 
   const [activeTerminalIdState, setActiveTerminalIdState] = useState<string | null>(null);
   const [autoSandboxCreated, setAutoSandboxCreated] = useState(false);
@@ -2857,7 +2793,7 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
   };
 
   const startResize = useCallback(
-    (panel: 'sidebar' | 'right' | 'bottom') => (e: React.MouseEvent | React.TouchEvent) => {
+    (panel: 'sidebar' | 'bottom') => (e: React.MouseEvent | React.TouchEvent) => {
       e.preventDefault();
       setIsResizing(panel);
     },
@@ -2896,9 +2832,6 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
       if (isResizing === 'sidebar') {
         const newWidth = clientX - containerRect.left;
         setSidebarWidth(Math.max(180, Math.min(500, newWidth)));
-      } else if (isResizing === 'right') {
-        const newWidth = containerRect.right - clientX;
-        setRightPanelWidth(Math.max(250, Math.min(800, newWidth)));
       } else if (isResizing === 'bottom' && editorAreaRef.current) {
         const editorRect = editorAreaRef.current.getBoundingClientRect();
         const newHeight = editorRect.bottom - clientY;
@@ -3040,7 +2973,7 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
     }
   }, [isConnected, writeFileFromLLM, makeDirectory, sendTerminalInput, createSandbox, activeTerminalIdState]);
 
-  const resizeCursor = isResizing === 'bottom' ? 'row-resize' : isResizing ? 'col-resize' : undefined;
+  const resizeCursor = isResizing === 'bottom' ? 'row-resize' : isResizing === 'sidebar' ? 'col-resize' : undefined;
 
   if (!chatStarted) {
     return null;
@@ -3216,25 +3149,6 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
             >
               <TerminalSquare size={16} />
             </button>
-
-            <button
-              onClick={() => {
-                setRightPanelTab('preview');
-                setIsRightPanelOpen(!isRightPanelOpen || rightPanelTab !== 'preview');
-              }}
-              className={`p-1.5 rounded ${isRightPanelOpen && rightPanelTab === 'preview' ? 'bg-[#444] text-blue-400' : 'text-gray-500 hover:text-white'}`}
-              title="Toggle Preview"
-            >
-              <Globe size={16} />
-            </button>
-
-            <button
-              onClick={() => setIsRightPanelOpen(!isRightPanelOpen)}
-              className="p-1.5 text-gray-500 hover:text-white"
-              title={isRightPanelOpen ? 'Close Panel' : 'Open Panel'}
-            >
-              {isRightPanelOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
-            </button>
           </div>
         </div>
 
@@ -3271,43 +3185,7 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
             )}
           </div>
 
-          {isRightPanelOpen && (
-            <>
-              <div
-                onMouseDown={startResize('right')}
-                onTouchStart={startResize('right')}
-                className={`w-3 cursor-col-resize flex-shrink-0 flex items-center justify-center group touch-none
-                  ${isResizing === 'right' ? 'bg-blue-500' : 'bg-[#333] hover:bg-blue-500/50 active:bg-blue-500/50'}`}
-              >
-                <div
-                  className={`w-0.5 h-16 rounded-full transition-colors
-                  ${isResizing === 'right' ? 'bg-white' : 'bg-transparent group-hover:bg-blue-400'}`}
-                />
-              </div>
-
-              <div className="flex-shrink-0 flex flex-col" style={{ width: rightPanelWidth }}>
-                <div className="h-9 bg-[#2d2d2d] border-b border-[#333] flex items-center px-2 flex-shrink-0">
-                  <button
-                    onClick={() => setRightPanelTab('preview')}
-                    className={`px-3 py-1 text-xs rounded ${rightPanelTab === 'preview' ? 'bg-[#1e1e1e] text-blue-400' : 'text-gray-500 hover:text-white'}`}
-                  >
-                    <Globe size={12} className="inline mr-1" />
-                    Preview
-                  </button>
-                  <button
-                    onClick={() => setIsRightPanelOpen(false)}
-                    className="ml-auto p-1 text-gray-500 hover:text-white"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-
-                <div className="flex-1 overflow-hidden">
-                  <PreviewPanel sandboxId={sandboxId} isConnected={isConnected} />
-                </div>
-              </div>
-            </>
-          )}
+          
         </div>
 
         <div className="h-6 bg-[#007acc] text-white text-[10px] flex items-center px-3 justify-between select-none flex-shrink-0">
