@@ -1420,19 +1420,72 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ sandboxId, isConnected, def
 </head>
 <body>
   <iframe id="preview-frame" src="${previewUrl}" allow="accelerometer; camera; encrypted-media; geolocation; gyroscope; microphone; midi"></iframe>
+  
+  <!-- Eruda Core -->
   <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+  
+  <!-- Eruda Official Plugins -->
+  <script src="https://cdn.jsdelivr.net/npm/eruda-monitor"></script>
+  <script src="https://cdn.jsdelivr.net/npm/eruda-features"></script>
+  <script src="https://cdn.jsdelivr.net/npm/eruda-timing"></script>
+  <script src="https://cdn.jsdelivr.net/npm/eruda-code"></script>
+  <script src="https://cdn.jsdelivr.net/npm/eruda-benchmark"></script>
+  <script src="https://cdn.jsdelivr.net/npm/eruda-geolocation"></script>
+  <script src="https://cdn.jsdelivr.net/npm/eruda-orientation"></script>
+  <script src="https://cdn.jsdelivr.net/npm/eruda-touches"></script>
+  
   <script>
+    // Initialize Eruda with ALL 7 built-in tools
     eruda.init({
       container: document.body,
-      tool: ['console', 'elements', 'network', 'resources', 'info'],
+      tool: ['console', 'elements', 'network', 'resources', 'sources', 'info', 'snippets'],
       useShadowDom: true,
-      autoScale: true
+      autoScale: true,
+      defaults: {
+        displaySize: 50,
+        transparency: 0.9,
+        theme: 'Material Palenight'
+      }
     });
+    
+    // Add all official plugins
+    eruda.add(erudaMonitor);
+    eruda.add(erudaFeatures);
+    eruda.add(erudaTiming);
+    eruda.add(erudaCode);
+    eruda.add(erudaBenchmark);
+    eruda.add(erudaGeolocation);
+    eruda.add(erudaOrientation);
+    eruda.add(erudaTouches);
+    
     eruda.show();
     
-    console.log('%c[Eruda] Console initialized for preview wrapper', 'color: #4CAF50; font-weight: bold;');
-    console.log('%c[Eruda] Note: Due to cross-origin restrictions, console logs from the iframe app may not appear here.', 'color: #FF9800;');
-    console.log('%c[Eruda] For full debugging, click "Open in new tab" and use browser DevTools.', 'color: #2196F3;');
+    // Console welcome messages
+    console.log('%c╔══════════════════════════════════════════════════════════════╗', 'color: #4CAF50;');
+    console.log('%c║           ERUDA DEVELOPER CONSOLE - FULL VERSION             ║', 'color: #4CAF50; font-weight: bold;');
+    console.log('%c╚══════════════════════════════════════════════════════════════╝', 'color: #4CAF50;');
+    console.log('');
+    console.log('%c📦 Built-in Tools:', 'color: #2196F3; font-weight: bold;');
+    console.log('   • Console - JavaScript console with log filtering');
+    console.log('   • Elements - DOM inspector and element highlighter');
+    console.log('   • Network - Network request monitor');
+    console.log('   • Resources - LocalStorage, SessionStorage, Cookies, IndexedDB');
+    console.log('   • Sources - View page source code');
+    console.log('   • Info - Page information and user agent');
+    console.log('   • Snippets - Run predefined code snippets');
+    console.log('');
+    console.log('%c🔌 Loaded Plugins:', 'color: #9C27B0; font-weight: bold;');
+    console.log('   • Monitor - FPS and memory usage monitor');
+    console.log('   • Features - Browser feature detection');
+    console.log('   • Timing - Performance and resource timing');
+    console.log('   • Code - Run custom JavaScript code');
+    console.log('   • Benchmark - Performance benchmarking');
+    console.log('   • Geolocation - Geolocation testing');
+    console.log('   • Orientation - Device orientation');
+    console.log('   • Touches - Touch event visualization');
+    console.log('');
+    console.log('%c⚠️ Note: Due to cross-origin restrictions, some features may be limited.', 'color: #FF9800;');
+    console.log('%c💡 Tip: For full debugging, click "Open in new tab" and use browser DevTools.', 'color: #03A9F4;');
   </script>
 </body>
 </html>`;
@@ -1533,7 +1586,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ sandboxId, isConnected, def
                 ? 'bg-green-600 text-white hover:bg-green-700' 
                 : 'text-gray-400 hover:text-white hover:bg-[#444]'
             }`}
-            title={erudaEnabled ? 'Disable Eruda Console' : 'Enable Eruda Console'}
+            title={erudaEnabled ? 'Disable Eruda Console (15 Tools)' : 'Enable Eruda Console (7 Built-in + 8 Plugins)'}
           >
             <Terminal size={12} />
           </button>
@@ -1601,7 +1654,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ sandboxId, isConnected, def
                 className="w-full h-full border-0"
                 onLoad={handleIframeLoad}
                 onError={handleIframeError}
-                title="Preview with Eruda Console"
+                title="Preview with Eruda Console (Full - 15 Tools)"
                 sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
               />
             ) : (
@@ -1627,8 +1680,9 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ sandboxId, isConnected, def
       <div className="h-6 bg-[#252526] border-t border-[#333] flex items-center px-3 text-[10px] text-gray-500">
         <span>{deviceSizes[deviceMode].label}</span>
         {erudaEnabled && (
-          <span className="ml-2 px-1.5 py-0.5 bg-green-600 text-white rounded text-[9px] font-medium">
-            Eruda
+          <span className="ml-2 px-1.5 py-0.5 bg-gradient-to-r from-green-600 to-emerald-500 text-white rounded text-[9px] font-medium flex items-center gap-1">
+            <span>Eruda Full</span>
+            <span className="bg-white/20 px-1 rounded text-[7px]">15</span>
           </span>
         )}
         {sandboxId && <span className="ml-auto truncate max-w-[200px]">Sandbox: {sandboxId.substring(0, 12)}...</span>}
