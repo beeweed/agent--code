@@ -39,6 +39,7 @@ import {
   Maximize2,
   Minimize2,
   Plus,
+  Terminal,
 } from 'lucide-react';
 
 /*
@@ -1400,6 +1401,42 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ sandboxId, isConnected, def
   const [error, setError] = useState<string | null>(null);
   const [deviceMode, setDeviceMode] = useState<DeviceMode>('desktop');
   const [key, setKey] = useState(0);
+  const [erudaEnabled, setErudaEnabled] = useState(false);
+
+  const erudaWrapperHtml = React.useMemo(() => {
+    if (!previewUrl || !erudaEnabled) return null;
+    
+    return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Preview with Eruda Console</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+    iframe { width: 100%; height: 100%; border: none; }
+  </style>
+</head>
+<body>
+  <iframe id="preview-frame" src="${previewUrl}" allow="accelerometer; camera; encrypted-media; geolocation; gyroscope; microphone; midi"></iframe>
+  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+  <script>
+    eruda.init({
+      container: document.body,
+      tool: ['console', 'elements', 'network', 'resources', 'info'],
+      useShadowDom: true,
+      autoScale: true
+    });
+    eruda.show();
+    
+    console.log('%c[Eruda] Console initialized for preview wrapper', 'color: #4CAF50; font-weight: bold;');
+    console.log('%c[Eruda] Note: Due to cross-origin restrictions, console logs from the iframe app may not appear here.', 'color: #FF9800;');
+    console.log('%c[Eruda] For full debugging, click "Open in new tab" and use browser DevTools.', 'color: #2196F3;');
+  </script>
+</body>
+</html>`;
+  }, [previewUrl, erudaEnabled]);
 
   useEffect(() => {
     if (sandboxId && port) {
@@ -1489,6 +1526,18 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ sandboxId, isConnected, def
 
         <div className="flex items-center space-x-1 ml-2">
           <button
+            onClick={() => setErudaEnabled(!erudaEnabled)}
+            disabled={!previewUrl}
+            className={`p-1.5 rounded disabled:opacity-50 ${
+              erudaEnabled 
+                ? 'bg-green-600 text-white hover:bg-green-700' 
+                : 'text-gray-400 hover:text-white hover:bg-[#444]'
+            }`}
+            title={erudaEnabled ? 'Disable Eruda Console' : 'Enable Eruda Console'}
+          >
+            <Terminal size={12} />
+          </button>
+          <button
             onClick={handleRefresh}
             disabled={!previewUrl}
             className="p-1.5 text-gray-400 hover:text-white hover:bg-[#444] rounded disabled:opacity-50"
@@ -1545,15 +1594,27 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ sandboxId, isConnected, def
                 <Loader2 size={32} className="animate-spin text-blue-400" />
               </div>
             )}
-            <iframe
-              key={key}
-              src={previewUrl}
-              className="w-full h-full border-0"
-              onLoad={handleIframeLoad}
-              onError={handleIframeError}
-              title="Preview"
-              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
-            />
+            {erudaEnabled && erudaWrapperHtml ? (
+              <iframe
+                key={`eruda-${key}`}
+                srcDoc={erudaWrapperHtml}
+                className="w-full h-full border-0"
+                onLoad={handleIframeLoad}
+                onError={handleIframeError}
+                title="Preview with Eruda Console"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+              />
+            ) : (
+              <iframe
+                key={key}
+                src={previewUrl}
+                className="w-full h-full border-0"
+                onLoad={handleIframeLoad}
+                onError={handleIframeError}
+                title="Preview"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+              />
+            )}
           </div>
         ) : (
           <div className="text-center">
@@ -1565,6 +1626,11 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ sandboxId, isConnected, def
 
       <div className="h-6 bg-[#252526] border-t border-[#333] flex items-center px-3 text-[10px] text-gray-500">
         <span>{deviceSizes[deviceMode].label}</span>
+        {erudaEnabled && (
+          <span className="ml-2 px-1.5 py-0.5 bg-green-600 text-white rounded text-[9px] font-medium">
+            Eruda
+          </span>
+        )}
         {sandboxId && <span className="ml-auto truncate max-w-[200px]">Sandbox: {sandboxId.substring(0, 12)}...</span>}
       </div>
     </div>

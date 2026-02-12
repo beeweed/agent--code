@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Globe,
   RefreshCw,
@@ -10,6 +10,7 @@ import {
   Tablet,
   Cloud,
   CloudOff,
+  Terminal,
 } from 'lucide-react';
 import { useStore } from '@nanostores/react';
 import { e2bState } from '~/lib/stores/e2b';
@@ -36,6 +37,43 @@ export const PreviewTab: React.FC<PreviewTabProps> = ({ chatStarted }) => {
   const [error, setError] = useState<string | null>(null);
   const [deviceMode, setDeviceMode] = useState<DeviceMode>('desktop');
   const [key, setKey] = useState(0);
+  const [erudaEnabled, setErudaEnabled] = useState(false);
+
+  const erudaWrapperHtml = useMemo(() => {
+    if (!previewUrl || !erudaEnabled) return null;
+    
+    return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Preview with Eruda Console</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+    iframe { width: 100%; height: 100%; border: none; }
+  </style>
+</head>
+<body>
+  <iframe id="preview-frame" src="${previewUrl}" allow="accelerometer; camera; encrypted-media; geolocation; gyroscope; microphone; midi"></iframe>
+  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+  <script>
+    eruda.init({
+      container: document.body,
+      tool: ['console', 'elements', 'network', 'resources', 'info'],
+      useShadowDom: true,
+      autoScale: true
+    });
+    eruda.show();
+    
+    // Add message to console about cross-origin limitations
+    console.log('%c[Eruda] Console initialized for preview wrapper', 'color: #4CAF50; font-weight: bold;');
+    console.log('%c[Eruda] Note: Due to cross-origin restrictions, console logs from the iframe app may not appear here.', 'color: #FF9800;');
+    console.log('%c[Eruda] For full debugging, click "Open in new tab" and use browser DevTools.', 'color: #2196F3;');
+  </script>
+</body>
+</html>`;
+  }, [previewUrl, erudaEnabled]);
 
   useEffect(() => {
     if (sandboxId && port) {
@@ -135,6 +173,18 @@ export const PreviewTab: React.FC<PreviewTabProps> = ({ chatStarted }) => {
 
         <div className="flex items-center space-x-1 ml-3 border-l border-bolt-elements-borderColor pl-3">
           <button
+            onClick={() => setErudaEnabled(!erudaEnabled)}
+            disabled={!previewUrl}
+            className={`p-2 rounded transition-colors disabled:opacity-50 ${
+              erudaEnabled 
+                ? 'bg-green-600 text-white hover:bg-green-700' 
+                : 'text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary hover:bg-bolt-elements-background-depth-1'
+            }`}
+            title={erudaEnabled ? 'Disable Eruda Console' : 'Enable Eruda Console'}
+          >
+            <Terminal size={16} />
+          </button>
+          <button
             onClick={handleRefresh}
             disabled={!previewUrl}
             className="p-2 text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary hover:bg-bolt-elements-background-depth-1 rounded disabled:opacity-50 transition-colors"
@@ -193,15 +243,27 @@ export const PreviewTab: React.FC<PreviewTabProps> = ({ chatStarted }) => {
                 <Loader2 size={40} className="animate-spin text-bolt-elements-loader-progress" />
               </div>
             )}
-            <iframe
-              key={key}
-              src={previewUrl}
-              className="w-full h-full border-0"
-              onLoad={handleIframeLoad}
-              onError={handleIframeError}
-              title="Preview"
-              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
-            />
+            {erudaEnabled && erudaWrapperHtml ? (
+              <iframe
+                key={`eruda-${key}`}
+                srcDoc={erudaWrapperHtml}
+                className="w-full h-full border-0"
+                onLoad={handleIframeLoad}
+                onError={handleIframeError}
+                title="Preview with Eruda Console"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+              />
+            ) : (
+              <iframe
+                key={key}
+                src={previewUrl}
+                className="w-full h-full border-0"
+                onLoad={handleIframeLoad}
+                onError={handleIframeError}
+                title="Preview"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+              />
+            )}
           </div>
         ) : (
           <div className="text-center">
@@ -214,6 +276,11 @@ export const PreviewTab: React.FC<PreviewTabProps> = ({ chatStarted }) => {
       {/* Status Bar */}
       <div className="h-7 bg-bolt-elements-background-depth-3 border-t border-bolt-elements-borderColor flex items-center px-4 text-xs text-bolt-elements-textSecondary">
         <span>{deviceSizes[deviceMode].label}</span>
+        {erudaEnabled && (
+          <span className="ml-2 px-2 py-0.5 bg-green-600 text-white rounded text-[10px] font-medium">
+            Eruda Console
+          </span>
+        )}
         {sandboxId && (
           <span className="ml-auto">
             Sandbox: {sandboxId.substring(0, 12)}...
