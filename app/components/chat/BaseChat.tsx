@@ -251,7 +251,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                     </button>
                   </div>
                 </div>
-                
+
                 {/* Tab Content */}
                 <div className="flex-1 overflow-hidden">
                   <ClientOnly>

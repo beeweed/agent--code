@@ -173,6 +173,7 @@ const isSystemFileOrDirectory = (name: string, isDirectory: boolean): boolean =>
   if (isDirectory) {
     return EXCLUDED_SYSTEM_DIRECTORIES.has(name);
   }
+
   return EXCLUDED_SYSTEM_FILES.has(name);
 };
 
@@ -778,7 +779,7 @@ const useE2BSandbox = () => {
         }
       };
 
-      watcherIntervalRef.current = setInterval(checkForChanges, 2000);
+      watcherIntervalRef.current = setInterval(checkForChanges, 3000);
       checkForChanges();
     },
     [listAllFiles, notifyFileChange],
@@ -792,6 +793,53 @@ const useE2BSandbox = () => {
 
     lastFilesHashRef.current.clear();
   }, []);
+
+  const connectToSandbox = useCallback(
+    async (existingSandboxId: string) => {
+      if (!state.apiKey) {
+        setState((prev) => ({ ...prev, error: 'Please enter your E2B API key' }));
+        return null;
+      }
+
+      setState((prev) => ({ ...prev, isConnecting: true, error: null }));
+
+      try {
+        console.log(`[E2B] Attempting to connect to existing sandbox: ${existingSandboxId}`);
+
+        const sandbox = await Sandbox.connect(existingSandboxId, {
+          apiKey: state.apiKey,
+          timeoutMs: 60 * 60 * 1000,
+        });
+
+        sandboxRef.current = sandbox;
+
+        setState((prev) => ({
+          ...prev,
+          isConnected: true,
+          isConnecting: false,
+          sandboxId: sandbox.sandboxId,
+          error: null,
+        }));
+
+        startFileWatcher('/home/user');
+        console.log(`[E2B] Successfully reconnected to sandbox: ${existingSandboxId}`);
+
+        return sandbox;
+      } catch (error: any) {
+        console.error('Failed to connect to existing sandbox:', error);
+
+        // Return null to indicate connection failed - caller should create new sandbox
+        setState((prev) => ({
+          ...prev,
+          isConnecting: false,
+          error: null, // Don't show error - we'll try creating a new one
+        }));
+
+        return null;
+      }
+    },
+    [state.apiKey, startFileWatcher],
+  );
 
   const createSandbox = useCallback(async () => {
     if (!state.apiKey) {
@@ -1034,6 +1082,7 @@ const useE2BSandbox = () => {
     ...state,
     setApiKey,
     createSandbox,
+    connectToSandbox,
     createTerminal,
     sendTerminalInput,
     resizeTerminal,
@@ -1404,8 +1453,10 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ sandboxId, isConnected, def
   const [erudaEnabled, setErudaEnabled] = useState(false);
 
   const erudaWrapperHtml = React.useMemo(() => {
-    if (!previewUrl || !erudaEnabled) return null;
-    
+    if (!previewUrl || !erudaEnabled) {
+      return null;
+    }
+
     return `<!DOCTYPE html>
 <html>
 <head>
@@ -1582,8 +1633,8 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ sandboxId, isConnected, def
             onClick={() => setErudaEnabled(!erudaEnabled)}
             disabled={!previewUrl}
             className={`p-1.5 rounded disabled:opacity-50 ${
-              erudaEnabled 
-                ? 'bg-green-600 text-white hover:bg-green-700' 
+              erudaEnabled
+                ? 'bg-green-600 text-white hover:bg-green-700'
                 : 'text-gray-400 hover:text-white hover:bg-[#444]'
             }`}
             title={erudaEnabled ? 'Disable Eruda Console (15 Tools)' : 'Enable Eruda Console (7 Built-in + 8 Plugins)'}
@@ -1822,8 +1873,10 @@ const SandboxControls: React.FC<SandboxControlsProps> = ({
                 )}
               </button>
             ) : (
-              <div className="flex-1 flex items-center justify-center space-x-2 bg-green-600/20 border border-green-600/50
-                text-green-400 rounded py-2 px-4 text-sm font-medium">
+              <div
+                className="flex-1 flex items-center justify-center space-x-2 bg-green-600/20 border border-green-600/50
+                text-green-400 rounded py-2 px-4 text-sm font-medium"
+              >
                 <CheckCircle size={14} />
                 <span>Sandbox Running</span>
               </div>
@@ -1888,7 +1941,7 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({
 
     syncDebounceRef.current = setTimeout(() => {
       onCommandComplete();
-    }, 1500);
+    }, 3000);
   }, [autoSync, onCommandComplete]);
 
   const createNewTerminal = useCallback(async () => {
@@ -2551,23 +2604,19 @@ const App = () => {
               </span>
             )}
 
-            <button
-              onClick={() => setIsBottomPanelOpen(!isBottomPanelOpen)}
-              className={`p-1.5 rounded ${isBottomPanelOpen ? 'bg-[#444] text-green-400' : 'text-gray-500 hover:text-white'}`}
-              title="Toggle Terminal"
-            >
+            <div className="p-1.5 rounded bg-[#444] text-green-400 cursor-default" title="Terminal (Always Open)">
               <TerminalSquare size={16} />
-            </button>
+            </div>
           </div>
         </div>
 
         <div className="flex-1 flex overflow-hidden">
           <div ref={editorAreaRef} className="flex-1 flex flex-col min-w-0">
-            <div className="flex-1 overflow-hidden" style={{ minHeight: isBottomPanelOpen ? '100px' : '100%' }}>
+            <div className="flex-1 overflow-hidden" style={{ minHeight: '100px' }}>
               <CodeEditor file={activeFile} onChange={updateFileContent} />
             </div>
 
-            {isBottomPanelOpen && (
+            {true && (
               <>
                 <div
                   onMouseDown={startResize('bottom')}
@@ -2593,8 +2642,6 @@ const App = () => {
               </>
             )}
           </div>
-
-          
         </div>
 
         <div className="h-6 bg-[#007acc] text-white text-[10px] flex items-center px-3 justify-between select-none flex-shrink-0">
@@ -2634,12 +2681,13 @@ import { e2bStore, e2bState, e2bApiKey } from '~/lib/stores/e2b';
 
 export interface E2BSandboxProps {
   chatStarted?: boolean;
+  chatId?: string;
   onFileWrite?: (path: string, content: string) => void;
   onCommandRun?: (command: string) => void;
 }
 
 // Wrapper component that integrates with bolt.new's e2b store
-export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) => {
+export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted, chatId }) => {
   const {
     files,
     activeFileId,
@@ -2670,6 +2718,7 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
     isSyncing: isSandboxSyncing,
     setApiKey: setInternalApiKey,
     createSandbox,
+    connectToSandbox,
     createTerminal,
     sendTerminalInput,
     resizeTerminal,
@@ -2714,10 +2763,15 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
     }
   }, [internalApiKey, setInternalApiKey]);
 
-  // Update store state when connection changes
+  // Update store state when connection changes and save sandbox ID to localStorage
   useEffect(() => {
     e2bStore.setConnected(isConnected, sandboxId);
-  }, [isConnected, sandboxId]);
+
+    // Save sandbox ID to localStorage when connected
+    if (isConnected && sandboxId && chatId) {
+      e2bStore.saveSandboxIdForChat(chatId, sandboxId);
+    }
+  }, [isConnected, sandboxId, chatId]);
 
   useEffect(() => {
     e2bStore.setConnecting(isConnecting);
@@ -2779,7 +2833,7 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
     return () => unsubscribe();
   }, [internalApiKey, setInternalApiKey]);
 
-  // Auto-create sandbox when API key is set and chat starts
+  // Auto-create or reconnect sandbox when API key is set and chat starts
   useEffect(() => {
     /*
      * Use the internal API key state directly instead of reading from store
@@ -2788,15 +2842,58 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
     const hasApiKey = internalApiKey && internalApiKey.trim().length > 0;
 
     if (chatStarted && hasApiKey && !isConnected && !isConnecting && !autoSandboxCreated) {
-      console.log('[E2B] Auto-creating sandbox - chatStarted:', chatStarted, 'hasApiKey:', hasApiKey);
+      console.log(
+        '[E2B] Auto-creating/connecting sandbox - chatStarted:',
+        chatStarted,
+        'hasApiKey:',
+        hasApiKey,
+        'chatId:',
+        chatId,
+      );
       setAutoSandboxCreated(true);
       e2bStore.setAutoCreateTriggered(true);
 
       // Set connecting state in store IMMEDIATELY so file operations get queued
       e2bStore.setConnecting(true);
-      createSandbox();
+
+      // Try to reconnect to existing sandbox if we have a stored sandbox ID for this chat
+      const initSandbox = async () => {
+        if (chatId) {
+          const storedSandboxId = e2bStore.getSandboxIdForChat(chatId);
+
+          if (storedSandboxId) {
+            console.log(`[E2B] Found stored sandbox ${storedSandboxId} for chat ${chatId}, attempting to reconnect...`);
+
+            const sandbox = await connectToSandbox(storedSandboxId);
+
+            if (sandbox) {
+              console.log(`[E2B] Successfully reconnected to sandbox ${storedSandboxId}`);
+              return;
+            }
+
+            console.log(`[E2B] Failed to reconnect to sandbox ${storedSandboxId}, creating new sandbox...`);
+
+            // Clear invalid sandbox ID
+            e2bStore.clearSandboxIdForChat(chatId);
+          }
+        }
+
+        // Create new sandbox if no stored ID or reconnection failed
+        createSandbox();
+      };
+
+      initSandbox();
     }
-  }, [chatStarted, internalApiKey, isConnected, isConnecting, autoSandboxCreated, createSandbox]);
+  }, [
+    chatStarted,
+    chatId,
+    internalApiKey,
+    isConnected,
+    isConnecting,
+    autoSandboxCreated,
+    createSandbox,
+    connectToSandbox,
+  ]);
 
   // Reset autoSandboxCreated when sandbox disconnects so it can auto-create again
   useEffect(() => {
@@ -3262,23 +3359,19 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
               </span>
             )}
 
-            <button
-              onClick={() => setIsBottomPanelOpen(!isBottomPanelOpen)}
-              className={`p-1.5 rounded ${isBottomPanelOpen ? 'bg-[#444] text-green-400' : 'text-gray-500 hover:text-white'}`}
-              title="Toggle Terminal"
-            >
+            <div className="p-1.5 rounded bg-[#444] text-green-400 cursor-default" title="Terminal (Always Open)">
               <TerminalSquare size={16} />
-            </button>
+            </div>
           </div>
         </div>
 
         <div className="flex-1 flex overflow-hidden">
           <div ref={editorAreaRef} className="flex-1 flex flex-col min-w-0">
-            <div className="flex-1 overflow-hidden" style={{ minHeight: isBottomPanelOpen ? '100px' : '100%' }}>
+            <div className="flex-1 overflow-hidden" style={{ minHeight: '100px' }}>
               <CodeEditor file={activeFile} onChange={updateFileContent} />
             </div>
 
-            {isBottomPanelOpen && (
+            {true && (
               <>
                 <div
                   onMouseDown={startResize('bottom')}
@@ -3304,8 +3397,6 @@ export const E2BSandboxWrapper: React.FC<E2BSandboxProps> = ({ chatStarted }) =>
               </>
             )}
           </div>
-
-          
         </div>
 
         <div className="h-6 bg-[#007acc] text-white text-[10px] flex items-center px-3 justify-between select-none flex-shrink-0">

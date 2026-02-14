@@ -33,7 +33,10 @@ export const PreviewTab: React.FC<PreviewTabProps> = ({ chatStarted }) => {
   }, [sandboxId, port]);
 
   const isValidUrl = useCallback((url: string | null): url is string => {
-    if (!url) return false;
+    if (!url) {
+      return false;
+    }
+
     try {
       new URL(url);
       return true;
@@ -73,9 +76,7 @@ export const PreviewTab: React.FC<PreviewTabProps> = ({ chatStarted }) => {
           <div className="w-20 h-20 rounded-2xl bg-bolt-elements-background-depth-3 flex items-center justify-center mb-6">
             <CloudOff size={36} className="text-bolt-elements-textSecondary opacity-50" />
           </div>
-          <h2 className="text-lg font-semibold mb-2 text-bolt-elements-textPrimary">
-            No Sandbox Connected
-          </h2>
+          <h2 className="text-lg font-semibold mb-2 text-bolt-elements-textPrimary">No Sandbox Connected</h2>
           <p className="text-sm text-bolt-elements-textSecondary leading-relaxed">
             Start a chat and connect to an E2B sandbox to see your application preview here.
           </p>
@@ -97,9 +98,7 @@ export const PreviewTab: React.FC<PreviewTabProps> = ({ chatStarted }) => {
         </div>
 
         {/* Title */}
-        <h2 className="text-xl font-semibold mb-2 text-bolt-elements-textPrimary text-center">
-          Application Preview
-        </h2>
+        <h2 className="text-xl font-semibold mb-2 text-bolt-elements-textPrimary text-center">Application Preview</h2>
         <p className="text-sm text-bolt-elements-textSecondary mb-8 text-center">
           {canOpenUrl ? 'Your application is ready to view' : 'Configure the port to generate preview URL'}
         </p>
@@ -116,9 +115,7 @@ export const PreviewTab: React.FC<PreviewTabProps> = ({ chatStarted }) => {
             className="w-full bg-bolt-elements-background-depth-1 border border-bolt-elements-borderColor rounded-xl px-4 py-3 text-center text-lg text-bolt-elements-textPrimary focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all"
             placeholder="3000"
           />
-          {error && (
-            <p className="mt-2 text-xs text-red-400 text-center">{error}</p>
-          )}
+          {error && <p className="mt-2 text-xs text-red-400 text-center">{error}</p>}
         </div>
 
         {/* URL Display Card */}
@@ -127,9 +124,7 @@ export const PreviewTab: React.FC<PreviewTabProps> = ({ chatStarted }) => {
             <span className="text-xs font-medium text-bolt-elements-textSecondary uppercase tracking-wide">
               Preview URL
             </span>
-            {canOpenUrl && (
-              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-            )}
+            {canOpenUrl && <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />}
           </div>
           <div className="flex items-center gap-3">
             <div className="flex-1 min-w-0">
@@ -141,9 +136,7 @@ export const PreviewTab: React.FC<PreviewTabProps> = ({ chatStarted }) => {
                   {previewUrl}
                 </p>
               ) : (
-                <p className="text-sm text-bolt-elements-textSecondary italic">
-                  No preview URL available
-                </p>
+                <p className="text-sm text-bolt-elements-textSecondary italic">No preview URL available</p>
               )}
             </div>
             {canOpenUrl && (
@@ -152,11 +145,7 @@ export const PreviewTab: React.FC<PreviewTabProps> = ({ chatStarted }) => {
                 className="flex-shrink-0 p-2 rounded-lg text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary hover:bg-bolt-elements-background-depth-2 transition-all active:scale-95"
                 title="Copy URL"
               >
-                {copied ? (
-                  <Check size={18} className="text-green-400" />
-                ) : (
-                  <Copy size={18} />
-                )}
+                {copied ? <Check size={18} className="text-green-400" /> : <Copy size={18} />}
               </button>
             )}
           </div>

@@ -102,6 +102,8 @@ const processQueue = async () => {
   isProcessingQueue = false;
 };
 
+const SANDBOX_STORAGE_PREFIX = 'e2b_sandbox_';
+
 export const e2bStore = {
   setApiKey(key: string) {
     e2bApiKey.set(key);
@@ -109,6 +111,37 @@ export const e2bStore = {
 
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem('e2b_api_key', key);
+    }
+  },
+
+  saveSandboxIdForChat(chatId: string, sandboxId: string) {
+    if (typeof localStorage !== 'undefined' && chatId && sandboxId) {
+      const storageKey = `${SANDBOX_STORAGE_PREFIX}${chatId}`;
+      localStorage.setItem(storageKey, sandboxId);
+      console.log(`[E2B Store] Saved sandbox ${sandboxId} for chat ${chatId}`);
+    }
+  },
+
+  getSandboxIdForChat(chatId: string): string | null {
+    if (typeof localStorage !== 'undefined' && chatId) {
+      const storageKey = `${SANDBOX_STORAGE_PREFIX}${chatId}`;
+      const sandboxId = localStorage.getItem(storageKey);
+
+      if (sandboxId) {
+        console.log(`[E2B Store] Found stored sandbox ${sandboxId} for chat ${chatId}`);
+      }
+
+      return sandboxId;
+    }
+
+    return null;
+  },
+
+  clearSandboxIdForChat(chatId: string) {
+    if (typeof localStorage !== 'undefined' && chatId) {
+      const storageKey = `${SANDBOX_STORAGE_PREFIX}${chatId}`;
+      localStorage.removeItem(storageKey);
+      console.log(`[E2B Store] Cleared sandbox for chat ${chatId}`);
     }
   },
 
