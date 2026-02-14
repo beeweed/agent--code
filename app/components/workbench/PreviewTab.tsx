@@ -1,27 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import {
-  Globe,
-  RefreshCw,
-  ExternalLink,
-  Loader2,
-  AlertCircle,
-  Monitor,
-  Smartphone,
-  Tablet,
-  Cloud,
-  CloudOff,
-  Terminal,
-} from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { ExternalLink, Globe, CloudOff, Link2, Copy, Check } from 'lucide-react';
 import { useStore } from '@nanostores/react';
 import { e2bState } from '~/lib/stores/e2b';
-
-type DeviceMode = 'desktop' | 'tablet' | 'mobile';
-
-const deviceSizes: Record<DeviceMode, { width: string; label: string }> = {
-  desktop: { width: '100%', label: 'Desktop' },
-  tablet: { width: '768px', label: 'Tablet' },
-  mobile: { width: '375px', label: 'Mobile' },
-};
 
 interface PreviewTabProps {
   chatStarted?: boolean;
@@ -30,102 +10,11 @@ interface PreviewTabProps {
 export const PreviewTab: React.FC<PreviewTabProps> = ({ chatStarted }) => {
   const state = useStore(e2bState);
   const { isConnected, sandboxId } = state;
-  
+
   const [port, setPort] = useState('3000');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [deviceMode, setDeviceMode] = useState<DeviceMode>('desktop');
-  const [key, setKey] = useState(0);
-  const [erudaEnabled, setErudaEnabled] = useState(false);
-
-  const erudaWrapperHtml = useMemo(() => {
-    if (!previewUrl || !erudaEnabled) return null;
-    
-    return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Preview with Eruda Console</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; overflow: hidden; }
-    iframe { width: 100%; height: 100%; border: none; }
-  </style>
-</head>
-<body>
-  <iframe id="preview-frame" src="${previewUrl}" allow="accelerometer; camera; encrypted-media; geolocation; gyroscope; microphone; midi"></iframe>
-  
-  <!-- Eruda Core -->
-  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-  
-  <!-- Eruda Official Plugins -->
-  <script src="https://cdn.jsdelivr.net/npm/eruda-monitor"></script>
-  <script src="https://cdn.jsdelivr.net/npm/eruda-features"></script>
-  <script src="https://cdn.jsdelivr.net/npm/eruda-timing"></script>
-  <script src="https://cdn.jsdelivr.net/npm/eruda-code"></script>
-  <script src="https://cdn.jsdelivr.net/npm/eruda-benchmark"></script>
-  <script src="https://cdn.jsdelivr.net/npm/eruda-geolocation"></script>
-  <script src="https://cdn.jsdelivr.net/npm/eruda-orientation"></script>
-  <script src="https://cdn.jsdelivr.net/npm/eruda-touches"></script>
-  
-  <script>
-    // Initialize Eruda with ALL 7 built-in tools
-    eruda.init({
-      container: document.body,
-      tool: ['console', 'elements', 'network', 'resources', 'sources', 'info', 'snippets'],
-      useShadowDom: true,
-      autoScale: true,
-      defaults: {
-        displaySize: 50,
-        transparency: 0.9,
-        theme: 'Material Palenight'
-      }
-    });
-    
-    // Add all official plugins
-    eruda.add(erudaMonitor);
-    eruda.add(erudaFeatures);
-    eruda.add(erudaTiming);
-    eruda.add(erudaCode);
-    eruda.add(erudaBenchmark);
-    eruda.add(erudaGeolocation);
-    eruda.add(erudaOrientation);
-    eruda.add(erudaTouches);
-    
-    eruda.show();
-    
-    // Console welcome messages
-    console.log('%c╔══════════════════════════════════════════════════════════════╗', 'color: #4CAF50;');
-    console.log('%c║           ERUDA DEVELOPER CONSOLE - FULL VERSION             ║', 'color: #4CAF50; font-weight: bold;');
-    console.log('%c╚══════════════════════════════════════════════════════════════╝', 'color: #4CAF50;');
-    console.log('');
-    console.log('%c📦 Built-in Tools:', 'color: #2196F3; font-weight: bold;');
-    console.log('   • Console - JavaScript console with log filtering');
-    console.log('   • Elements - DOM inspector and element highlighter');
-    console.log('   • Network - Network request monitor');
-    console.log('   • Resources - LocalStorage, SessionStorage, Cookies, IndexedDB');
-    console.log('   • Sources - View page source code');
-    console.log('   • Info - Page information and user agent');
-    console.log('   • Snippets - Run predefined code snippets');
-    console.log('');
-    console.log('%c🔌 Loaded Plugins:', 'color: #9C27B0; font-weight: bold;');
-    console.log('   • Monitor - FPS and memory usage monitor');
-    console.log('   • Features - Browser feature detection');
-    console.log('   • Timing - Performance and resource timing');
-    console.log('   • Code - Run custom JavaScript code');
-    console.log('   • Benchmark - Performance benchmarking');
-    console.log('   • Geolocation - Geolocation testing');
-    console.log('   • Orientation - Device orientation');
-    console.log('   • Touches - Touch event visualization');
-    console.log('');
-    console.log('%c⚠️ Note: Due to cross-origin restrictions, some features may be limited.', 'color: #FF9800;');
-    console.log('%c💡 Tip: For full debugging, click "Open in new tab" and use browser DevTools.', 'color: #03A9F4;');
-  </script>
-</body>
-</html>`;
-  }, [previewUrl, erudaEnabled]);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (sandboxId && port) {
@@ -143,25 +32,35 @@ export const PreviewTab: React.FC<PreviewTabProps> = ({ chatStarted }) => {
     }
   }, [sandboxId, port]);
 
-  const handleRefresh = () => {
-    setKey((prev) => prev + 1);
-    setIsLoading(true);
-  };
-
-  const handleOpenExternal = () => {
-    if (previewUrl) {
-      window.open(previewUrl, '_blank');
+  const isValidUrl = useCallback((url: string | null): url is string => {
+    if (!url) return false;
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
     }
-  };
+  }, []);
 
-  const handleIframeLoad = () => {
-    setIsLoading(false);
-  };
+  const handleOpenInNewTab = useCallback(() => {
+    if (isValidUrl(previewUrl)) {
+      window.open(previewUrl, '_blank', 'noopener,noreferrer');
+    }
+  }, [previewUrl, isValidUrl]);
 
-  const handleIframeError = () => {
-    setIsLoading(false);
-    setError('Failed to load preview. Make sure your server is running on the specified port.');
-  };
+  const handleCopyUrl = useCallback(async () => {
+    if (isValidUrl(previewUrl)) {
+      try {
+        await navigator.clipboard.writeText(previewUrl);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch (err) {
+        console.error('Failed to copy URL:', err);
+      }
+    }
+  }, [previewUrl, isValidUrl]);
+
+  const canOpenUrl = isValidUrl(previewUrl);
 
   if (!chatStarted) {
     return null;
@@ -169,175 +68,135 @@ export const PreviewTab: React.FC<PreviewTabProps> = ({ chatStarted }) => {
 
   if (!isConnected) {
     return (
-      <div className="h-full w-full flex flex-col items-center justify-center text-gray-500 bg-bolt-elements-background-depth-2">
-        <CloudOff size={64} className="mb-6 opacity-30" />
-        <h2 className="text-xl font-semibold mb-2 text-bolt-elements-textPrimary">No Sandbox Connected</h2>
-        <p className="text-sm text-bolt-elements-textSecondary text-center max-w-md">
-          Start a chat and connect to an E2B sandbox to see your application preview here.
-        </p>
+      <div className="h-full w-full flex flex-col items-center justify-center px-4 bg-bolt-elements-background-depth-2">
+        <div className="flex flex-col items-center text-center max-w-sm">
+          <div className="w-20 h-20 rounded-2xl bg-bolt-elements-background-depth-3 flex items-center justify-center mb-6">
+            <CloudOff size={36} className="text-bolt-elements-textSecondary opacity-50" />
+          </div>
+          <h2 className="text-lg font-semibold mb-2 text-bolt-elements-textPrimary">
+            No Sandbox Connected
+          </h2>
+          <p className="text-sm text-bolt-elements-textSecondary leading-relaxed">
+            Start a chat and connect to an E2B sandbox to see your application preview here.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full w-full flex flex-col bg-bolt-elements-background-depth-2">
-      {/* Header Bar */}
-      <div className="h-12 bg-bolt-elements-background-depth-3 border-b border-bolt-elements-borderColor flex items-center px-4 gap-3 flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <Cloud size={16} className="text-green-400" />
-          <span className="text-sm font-medium text-bolt-elements-textPrimary">Preview</span>
+    <div className="h-full w-full flex flex-col items-center justify-center px-4 py-8 bg-bolt-elements-background-depth-2">
+      <div className="w-full max-w-lg flex flex-col items-center">
+        {/* Icon */}
+        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-bolt-elements-background-depth-3 to-bolt-elements-background-depth-1 border border-bolt-elements-borderColor flex items-center justify-center mb-8 shadow-lg">
+          {canOpenUrl ? (
+            <Globe size={36} className="text-green-400" />
+          ) : (
+            <Link2 size={36} className="text-bolt-elements-textSecondary opacity-50" />
+          )}
         </div>
 
-        <div className="flex items-center ml-4">
-          <span className="text-xs text-bolt-elements-textSecondary mr-2">Port:</span>
+        {/* Title */}
+        <h2 className="text-xl font-semibold mb-2 text-bolt-elements-textPrimary text-center">
+          Application Preview
+        </h2>
+        <p className="text-sm text-bolt-elements-textSecondary mb-8 text-center">
+          {canOpenUrl ? 'Your application is ready to view' : 'Configure the port to generate preview URL'}
+        </p>
+
+        {/* Port Input */}
+        <div className="w-full max-w-xs mb-6">
+          <label className="block text-xs font-medium text-bolt-elements-textSecondary mb-2 text-center">
+            Port Number
+          </label>
           <input
             type="text"
             value={port}
             onChange={(e) => setPort(e.target.value)}
-            className="w-20 bg-bolt-elements-background-depth-1 border border-bolt-elements-borderColor rounded px-2 py-1 text-xs text-bolt-elements-textPrimary focus:outline-none focus:border-bolt-elements-borderColorActive"
+            className="w-full bg-bolt-elements-background-depth-1 border border-bolt-elements-borderColor rounded-xl px-4 py-3 text-center text-lg text-bolt-elements-textPrimary focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all"
             placeholder="3000"
           />
-        </div>
-
-        <div className="flex items-center ml-auto space-x-1">
-          <button
-            onClick={() => setDeviceMode('desktop')}
-            className={`p-2 rounded transition-colors ${deviceMode === 'desktop' ? 'bg-bolt-elements-item-backgroundAccent text-bolt-elements-item-contentAccent' : 'text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary hover:bg-bolt-elements-background-depth-1'}`}
-            title="Desktop view"
-          >
-            <Monitor size={16} />
-          </button>
-          <button
-            onClick={() => setDeviceMode('tablet')}
-            className={`p-2 rounded transition-colors ${deviceMode === 'tablet' ? 'bg-bolt-elements-item-backgroundAccent text-bolt-elements-item-contentAccent' : 'text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary hover:bg-bolt-elements-background-depth-1'}`}
-            title="Tablet view"
-          >
-            <Tablet size={16} />
-          </button>
-          <button
-            onClick={() => setDeviceMode('mobile')}
-            className={`p-2 rounded transition-colors ${deviceMode === 'mobile' ? 'bg-bolt-elements-item-backgroundAccent text-bolt-elements-item-contentAccent' : 'text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary hover:bg-bolt-elements-background-depth-1'}`}
-            title="Mobile view"
-          >
-            <Smartphone size={16} />
-          </button>
-        </div>
-
-        <div className="flex items-center space-x-1 ml-3 border-l border-bolt-elements-borderColor pl-3">
-          <button
-            onClick={() => setErudaEnabled(!erudaEnabled)}
-            disabled={!previewUrl}
-            className={`p-2 rounded transition-colors disabled:opacity-50 ${
-              erudaEnabled 
-                ? 'bg-green-600 text-white hover:bg-green-700' 
-                : 'text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary hover:bg-bolt-elements-background-depth-1'
-            }`}
-            title={erudaEnabled ? 'Disable Eruda Console (15 Tools)' : 'Enable Eruda Console (7 Built-in + 8 Plugins)'}
-          >
-            <Terminal size={16} />
-          </button>
-          <button
-            onClick={handleRefresh}
-            disabled={!previewUrl}
-            className="p-2 text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary hover:bg-bolt-elements-background-depth-1 rounded disabled:opacity-50 transition-colors"
-            title="Refresh preview"
-          >
-            <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
-          </button>
-          <button
-            onClick={handleOpenExternal}
-            disabled={!previewUrl}
-            className="p-2 text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary hover:bg-bolt-elements-background-depth-1 rounded disabled:opacity-50 transition-colors"
-            title="Open in new tab"
-          >
-            <ExternalLink size={16} />
-          </button>
-        </div>
-      </div>
-
-      {/* URL Bar */}
-      <div className="h-10 bg-bolt-elements-background-depth-1 border-b border-bolt-elements-borderColor flex items-center px-4">
-        <div className="flex-1 bg-bolt-elements-background-depth-2 border border-bolt-elements-borderColor rounded-lg px-3 py-1.5 flex items-center">
-          {previewUrl ? (
-            <>
-              <span className="text-green-400 text-xs mr-2">🔒</span>
-              <span className="text-sm text-bolt-elements-textPrimary truncate">{previewUrl}</span>
-            </>
-          ) : (
-            <span className="text-sm text-bolt-elements-textSecondary">No preview URL - enter a valid port</span>
+          {error && (
+            <p className="mt-2 text-xs text-red-400 text-center">{error}</p>
           )}
         </div>
-      </div>
 
-      {/* Preview Area */}
-      <div className="flex-1 overflow-hidden flex items-center justify-center bg-bolt-elements-background-depth-1 p-6">
-        {error ? (
-          <div className="text-center">
-            <AlertCircle size={64} className="mx-auto mb-6 text-yellow-500 opacity-50" />
-            <p className="text-bolt-elements-textSecondary mb-4">{error}</p>
-            <button
-              onClick={handleRefresh}
-              className="px-6 py-2 bg-bolt-elements-button-primary-background hover:bg-bolt-elements-button-primary-backgroundHover rounded-lg text-sm text-white font-medium transition-colors"
-            >
-              Try Again
-            </button>
-          </div>
-        ) : previewUrl ? (
-          <div
-            className="h-full bg-white rounded-xl overflow-hidden shadow-2xl transition-all duration-300 relative"
-            style={{
-              width: deviceSizes[deviceMode].width,
-              maxWidth: '100%',
-            }}
-          >
-            {isLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-bolt-elements-background-depth-2 z-10">
-                <Loader2 size={40} className="animate-spin text-bolt-elements-loader-progress" />
-              </div>
-            )}
-            {erudaEnabled && erudaWrapperHtml ? (
-              <iframe
-                key={`eruda-${key}`}
-                srcDoc={erudaWrapperHtml}
-                className="w-full h-full border-0"
-                onLoad={handleIframeLoad}
-                onError={handleIframeError}
-                title="Preview with Eruda Console (Full - 15 Tools)"
-                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
-              />
-            ) : (
-              <iframe
-                key={key}
-                src={previewUrl}
-                className="w-full h-full border-0"
-                onLoad={handleIframeLoad}
-                onError={handleIframeError}
-                title="Preview"
-                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
-              />
+        {/* URL Display Card */}
+        <div className="w-full bg-bolt-elements-background-depth-1 border border-bolt-elements-borderColor rounded-xl p-4 mb-6">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs font-medium text-bolt-elements-textSecondary uppercase tracking-wide">
+              Preview URL
+            </span>
+            {canOpenUrl && (
+              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
             )}
           </div>
-        ) : (
-          <div className="text-center">
-            <Globe size={64} className="mx-auto mb-6 opacity-20 text-bolt-elements-textSecondary" />
-            <p className="text-bolt-elements-textSecondary">Enter a valid port to preview your application</p>
+          <div className="flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              {canOpenUrl ? (
+                <p
+                  className="text-sm text-bolt-elements-textPrimary break-all select-all font-mono leading-relaxed"
+                  title={previewUrl}
+                >
+                  {previewUrl}
+                </p>
+              ) : (
+                <p className="text-sm text-bolt-elements-textSecondary italic">
+                  No preview URL available
+                </p>
+              )}
+            </div>
+            {canOpenUrl && (
+              <button
+                onClick={handleCopyUrl}
+                className="flex-shrink-0 p-2 rounded-lg text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary hover:bg-bolt-elements-background-depth-2 transition-all active:scale-95"
+                title="Copy URL"
+              >
+                {copied ? (
+                  <Check size={18} className="text-green-400" />
+                ) : (
+                  <Copy size={18} />
+                )}
+              </button>
+            )}
           </div>
-        )}
-      </div>
+        </div>
 
-      {/* Status Bar */}
-      <div className="h-7 bg-bolt-elements-background-depth-3 border-t border-bolt-elements-borderColor flex items-center px-4 text-xs text-bolt-elements-textSecondary">
-        <span>{deviceSizes[deviceMode].label}</span>
-        {erudaEnabled && (
-          <span className="ml-2 px-2 py-0.5 bg-gradient-to-r from-green-600 to-emerald-500 text-white rounded text-[10px] font-medium flex items-center gap-1">
-            <span>Eruda Full</span>
-            <span className="bg-white/20 px-1 rounded text-[8px]">15 Tools</span>
-          </span>
+        {/* Open in New Tab Button */}
+        <button
+          onClick={handleOpenInNewTab}
+          disabled={!canOpenUrl}
+          className={`
+            w-full max-w-xs flex items-center justify-center gap-3 px-6 py-4 rounded-xl text-base font-semibold
+            transition-all duration-200 transform
+            ${
+              canOpenUrl
+                ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg shadow-green-500/25 hover:shadow-xl hover:shadow-green-500/30 hover:scale-[1.02] active:scale-[0.98]'
+                : 'bg-bolt-elements-background-depth-3 text-bolt-elements-textSecondary cursor-not-allowed opacity-60'
+            }
+          `}
+        >
+          <ExternalLink size={20} />
+          <span>Open in New Tab</span>
+        </button>
+
+        {/* Helper Text */}
+        {!canOpenUrl && (
+          <p className="mt-4 text-xs text-bolt-elements-textSecondary text-center max-w-xs">
+            Enter a valid port number (1-65535) to enable the preview button
+          </p>
         )}
+
+        {/* Sandbox Info */}
         {sandboxId && (
-          <span className="ml-auto">
-            Sandbox: {sandboxId.substring(0, 12)}...
-          </span>
+          <div className="mt-8 px-4 py-2 rounded-full bg-bolt-elements-background-depth-3 border border-bolt-elements-borderColor">
+            <span className="text-xs text-bolt-elements-textSecondary">
+              Sandbox:{' '}
+              <span className="font-mono text-bolt-elements-textPrimary">
+                {sandboxId.length > 16 ? `${sandboxId.substring(0, 16)}...` : sandboxId}
+              </span>
+            </span>
+          </div>
         )}
       </div>
     </div>
